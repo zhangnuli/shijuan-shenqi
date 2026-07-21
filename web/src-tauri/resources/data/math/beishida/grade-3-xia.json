@@ -1,0 +1,119 @@
+{
+  "subject": "math",
+  "edition": "beishida",
+  "grade": 3,
+  "semester": "xia",
+  "title": "三年级数学下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 电子课本网目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "单元/课时目录来自电子课本网公开页 bookmulu；命题对齐智慧教育平台同步课程。不含教材正文。",
+    "editionLabel": "北师大版",
+    "subjectLabel": "数学",
+    "catalogRef": "http://www.dzkbw.com/books/bsd/shuxue/xs3x_2026/",
+    "smarteduPathHint": "小学 → 3年级 → 数学 → 北师大版 → 下册",
+    "entryCount": 11,
+    "unitCount": 11
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "第一单元 整数乘法（一)",
+      "lessons": [],
+      "points": [
+        "第一单元 整数乘法（一)"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "第二单元 图形的运动（二)",
+      "lessons": [],
+      "points": [
+        "第二单元 图形的运动（二)"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "第三单元周长",
+      "lessons": [],
+      "points": [
+        "第三单元周长"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "综合实践 制作动物体重“说明书”",
+      "lessons": [],
+      "points": [
+        "综合实践 制作动物体重“说明书”"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "第四单元 整数除法（一)",
+      "lessons": [],
+      "points": [
+        "第四单元 整数除法（一)"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "第五单元 动手做",
+      "lessons": [],
+      "points": [
+        "第五单元 动手做"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "数学好玩 图书排序",
+      "lessons": [],
+      "points": [
+        "数学好玩 图书排序"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "第六单元 关系与规律",
+      "lessons": [],
+      "points": [
+        "第六单元 关系与规律"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "第七单元 数据的整理与表示",
+      "lessons": [],
+      "points": [
+        "第七单元 数据的整理与表示"
+      ]
+    },
+    {
+      "id": "u10",
+      "name": "综合实践 制订我的家庭旅行计划",
+      "lessons": [],
+      "points": [
+        "综合实践 制订我的家庭旅行计划"
+      ]
+    },
+    {
+      "id": "u11",
+      "name": "总复习",
+      "lessons": [],
+      "points": [
+        "总复习"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/课时范围内，禁止超纲",
+    "单元测试只考所选单元课时",
+    "期中覆盖前半册单元，期末覆盖全册",
+    "目录来源（电子课本网）：http://www.dzkbw.com/books/bsd/shuxue/xs3x_2026/",
+    "风格可参考智慧教育平台同步课堂与基础性作业 https://basic.smartedu.cn/syncClassroom"
+  ]
+}

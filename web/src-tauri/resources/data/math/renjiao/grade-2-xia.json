@@ -1,0 +1,133 @@
+{
+  "subject": "math",
+  "edition": "renjiao",
+  "grade": 2,
+  "semester": "xia",
+  "title": "二年级下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "人教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 2年级 → 数学 → 人教版 → 下册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "数据收集整理",
+      "lessons": [
+        "统计表"
+      ],
+      "points": [
+        "数据整理"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "表内除法（一）",
+      "lessons": [
+        "平均分",
+        "除法意义",
+        "用口诀求商"
+      ],
+      "points": [
+        "表内除法"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "图形的运动（一）",
+      "lessons": [
+        "轴对称",
+        "平移"
+      ],
+      "points": [
+        "图形变换"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "表内除法（二）",
+      "lessons": [
+        "用除法解决问题",
+        "有余数"
+      ],
+      "points": [
+        "余数意义"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "混合运算",
+      "lessons": [
+        "先乘除后加减",
+        "小括号"
+      ],
+      "points": [
+        "运算顺序"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "有余数的除法",
+      "lessons": [
+        "竖式",
+        "验算"
+      ],
+      "points": [
+        "余数小于除数"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "万以内数的认识",
+      "lessons": [
+        "计数单位",
+        "读写比较"
+      ],
+      "points": [
+        "大数认识"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "克和千克",
+      "lessons": [
+        "质量单位"
+      ],
+      "points": [
+        "估测"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "数学广角—推理",
+      "lessons": [
+        "简单推理"
+      ],
+      "points": [
+        "逻辑"
+      ]
+    },
+    {
+      "id": "u10",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

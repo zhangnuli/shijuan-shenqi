@@ -1,0 +1,131 @@
+{
+  "subject": "math",
+  "edition": "renjiao",
+  "grade": 3,
+  "semester": "shang",
+  "title": "三年级上册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "人教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 3年级 → 数学 → 人教版 → 上册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "时、分、秒",
+      "lessons": [
+        "时间单位",
+        "简单计算"
+      ],
+      "points": [
+        "时间"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "万以内的加法和减法（一）",
+      "lessons": [
+        "口算",
+        "估算"
+      ],
+      "points": [
+        "加减"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "测量",
+      "lessons": [
+        "毫米分米千米"
+      ],
+      "points": [
+        "单位换算"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "万以内的加法和减法（二）",
+      "lessons": [
+        "连续进退位"
+      ],
+      "points": [
+        "竖式"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "倍的认识",
+      "lessons": [
+        "求一个数的几倍",
+        "倍数关系"
+      ],
+      "points": [
+        "倍"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "多位数乘一位数",
+      "lessons": [
+        "笔算乘法",
+        "解决问题"
+      ],
+      "points": [
+        "乘法"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "长方形和正方形",
+      "lessons": [
+        "周长"
+      ],
+      "points": [
+        "周长公式"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "分数的初步认识",
+      "lessons": [
+        "几分之一",
+        "几分之几"
+      ],
+      "points": [
+        "分数"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "数学广角—集合",
+      "lessons": [
+        "简单集合"
+      ],
+      "points": [
+        "重叠问题"
+      ]
+    },
+    {
+      "id": "u10",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

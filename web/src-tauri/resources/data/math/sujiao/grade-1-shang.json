@@ -1,0 +1,128 @@
+{
+  "subject": "math",
+  "edition": "sujiao",
+  "grade": 1,
+  "semester": "shang",
+  "title": "一年级上册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "苏教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 1年级 → 数学 → 苏教版 → 上册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "准备课",
+      "lessons": [
+        "数一数",
+        "比多少"
+      ],
+      "points": [
+        "1-10 认识",
+        "多少比较"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "位置",
+      "lessons": [
+        "上下",
+        "前后",
+        "左右"
+      ],
+      "points": [
+        "位置关系"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "1～5 的认识和加减法",
+      "lessons": [
+        "认识",
+        "分与合",
+        "加减"
+      ],
+      "points": [
+        "5 以内加减"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "认识图形（一）",
+      "lessons": [
+        "立体图形"
+      ],
+      "points": [
+        "长方体正方体圆柱球"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "6～10 的认识和加减法",
+      "lessons": [
+        "认识",
+        "加减",
+        "连加连减"
+      ],
+      "points": [
+        "10 以内加减"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "11～20 各数的认识",
+      "lessons": [
+        "数的组成",
+        "读写",
+        "序数"
+      ],
+      "points": [
+        "20 以内数"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "认识钟表",
+      "lessons": [
+        "整时",
+        "半时"
+      ],
+      "points": [
+        "时间初步"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "20 以内的进位加法",
+      "lessons": [
+        "9 加几",
+        "8 7 6 加几"
+      ],
+      "points": [
+        "凑十法"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

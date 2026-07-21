@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+web/node_modules/
+**/package-lock.json.bak
+
+# Build outputs
+web/dist/
+web/src-tauri/target/
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Logs & temp scrape artifacts
+*.log
+npm-debug.log*
+yarn-error.log*
+scripts/_*.txt
+scripts/_*.html
+_*.html
+_*.txt
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Env & secrets (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*credentials*
+secrets/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.swp
+*.swo
+
+# OS
+ehthumbs.db
+
+# Local app data snapshots (if ever copied into repo)
+**/app_data/
+**/AppData/
+
+# Tauri / cargo
+web/src-tauri/gen/schemas/*.json.bak
+**/*.pdb
+
+# 自动更新私钥（绝不可提交；公钥在 tauri.conf.json）
+.tauri/*.key
+.tauri/*.key.pub
+*.sig
+latest.json
+
+# 本地文档（不推远程）
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

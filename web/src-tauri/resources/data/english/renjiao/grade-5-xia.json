@@ -1,0 +1,127 @@
+{
+  "subject": "english",
+  "edition": "renjiao",
+  "grade": 5,
+  "semester": "xia",
+  "title": "5年级下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "人教版",
+    "subjectLabel": "英语",
+    "smarteduPathHint": "小学 → 5年级 → 英语 → 人教版 → 下册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "Unit 1",
+      "lessons": [
+        "Part A",
+        "Part B",
+        "Part C"
+      ],
+      "points": [
+        "词汇",
+        "句型",
+        "听说读写",
+        "语音/文化"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "Unit 2",
+      "lessons": [
+        "Part A",
+        "Part B",
+        "Part C"
+      ],
+      "points": [
+        "词汇",
+        "句型",
+        "听说读写",
+        "语音/文化"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "Unit 3",
+      "lessons": [
+        "Part A",
+        "Part B",
+        "Part C"
+      ],
+      "points": [
+        "词汇",
+        "句型",
+        "听说读写",
+        "语音/文化"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "Unit 4",
+      "lessons": [
+        "Part A",
+        "Part B",
+        "Part C"
+      ],
+      "points": [
+        "词汇",
+        "句型",
+        "听说读写",
+        "语音/文化"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "Unit 5",
+      "lessons": [
+        "Part A",
+        "Part B",
+        "Part C"
+      ],
+      "points": [
+        "词汇",
+        "句型",
+        "听说读写",
+        "语音/文化"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "Unit 6",
+      "lessons": [
+        "Part A",
+        "Part B",
+        "Part C"
+      ],
+      "points": [
+        "词汇",
+        "句型",
+        "听说读写",
+        "语音/文化"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "Recycle / 复习",
+      "lessons": [
+        "综合复习"
+      ],
+      "points": [
+        "单元综合",
+        "情景交际"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

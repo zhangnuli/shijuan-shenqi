@@ -1,0 +1,87 @@
+{
+  "subject": "math",
+  "edition": "beishida",
+  "grade": 6,
+  "semester": "xia",
+  "title": "六年级数学下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 电子课本网目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "单元/课时目录来自电子课本网公开页 bookmulu；命题对齐智慧教育平台同步课程。不含教材正文。",
+    "editionLabel": "北师大版",
+    "subjectLabel": "数学",
+    "catalogRef": "http://www.dzkbw.com/books/bsd/shuxue/6x/",
+    "smarteduPathHint": "小学 → 6年级 → 数学 → 北师大版 → 下册",
+    "entryCount": 7,
+    "unitCount": 7
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "一 圆柱与圆锥",
+      "lessons": [],
+      "points": [
+        "一 圆柱与圆锥"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "二 比例",
+      "lessons": [],
+      "points": [
+        "二 比例"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "三 图形的运动",
+      "lessons": [],
+      "points": [
+        "三 图形的运动"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "四 正比例与反比例",
+      "lessons": [],
+      "points": [
+        "四 正比例与反比例"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "数学好玩",
+      "lessons": [],
+      "points": [
+        "数学好玩"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "整理与复习",
+      "lessons": [],
+      "points": [
+        "整理与复习"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "总复习",
+      "lessons": [],
+      "points": [
+        "总复习"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/课时范围内，禁止超纲",
+    "单元测试只考所选单元课时",
+    "期中覆盖前半册单元，期末覆盖全册",
+    "目录来源（电子课本网）：http://www.dzkbw.com/books/bsd/shuxue/6x/",
+    "风格可参考智慧教育平台同步课堂与基础性作业 https://basic.smartedu.cn/syncClassroom"
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "subject": "math",
+  "edition": "renjiao",
+  "grade": 1,
+  "semester": "xia",
+  "title": "一年级下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "人教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 1年级 → 数学 → 人教版 → 下册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "认识图形（二）",
+      "lessons": [
+        "平面图形"
+      ],
+      "points": [
+        "长方形正方形三角形圆"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "20 以内的退位减法",
+      "lessons": [
+        "十几减 9",
+        "十几减几"
+      ],
+      "points": [
+        "破十法"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "分类与整理",
+      "lessons": [
+        "分类",
+        "简单统计"
+      ],
+      "points": [
+        "分类标准"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "100 以内数的认识",
+      "lessons": [
+        "数位",
+        "读写",
+        "大小比较"
+      ],
+      "points": [
+        "整十数"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "认识人民币",
+      "lessons": [
+        "元角分",
+        "简单计算"
+      ],
+      "points": [
+        "购物"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "100 以内的加法和减法（一）",
+      "lessons": [
+        "整十加减",
+        "两位数加减一位数"
+      ],
+      "points": [
+        "口算竖式"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "找规律",
+      "lessons": [
+        "简单规律"
+      ],
+      "points": [
+        "观察推理"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

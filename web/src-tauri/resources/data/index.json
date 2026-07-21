@@ -1,0 +1,30 @@
+{
+  "subjects": [
+    {
+      "subject": "math",
+      "edition": "beishida",
+      "label": "数学·北师大版"
+    },
+    {
+      "subject": "math",
+      "edition": "renjiao",
+      "label": "数学·人教版"
+    },
+    {
+      "subject": "math",
+      "edition": "sujiao",
+      "label": "数学·苏教版"
+    },
+    {
+      "subject": "chinese",
+      "edition": "renjiao",
+      "label": "语文·人教统编版"
+    },
+    {
+      "subject": "english",
+      "edition": "renjiao",
+      "label": "英语·人教版(3-6)"
+    }
+  ],
+  "rebuild": "python scripts/build_p1_curriculum.py"
+}

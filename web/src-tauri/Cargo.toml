@@ -1,0 +1,34 @@
+[package]
+name = "shijuan-shenqi"
+version = "0.1.0"
+description = "试卷神器 - AI 组卷桌面工具"
+authors = ["试卷神器"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "shijuan_shenqi_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "blocking"] }
+thiserror = "2"
+directories = "5"
+encoding_rs = "0.8"
+regex = "1"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security_Cryptography"] }

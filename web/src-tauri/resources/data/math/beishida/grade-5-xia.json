@@ -1,0 +1,119 @@
+{
+  "subject": "math",
+  "edition": "beishida",
+  "grade": 5,
+  "semester": "xia",
+  "title": "五年级数学下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 电子课本网目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "单元/课时目录来自电子课本网公开页 bookmulu；命题对齐智慧教育平台同步课程。不含教材正文。",
+    "editionLabel": "北师大版",
+    "subjectLabel": "数学",
+    "catalogRef": "http://www.dzkbw.com/books/bsd/shuxue/5x/",
+    "smarteduPathHint": "小学 → 5年级 → 数学 → 北师大版 → 下册",
+    "entryCount": 11,
+    "unitCount": 11
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "一 分数加减法",
+      "lessons": [],
+      "points": [
+        "一 分数加减法"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "二 长方体（一）",
+      "lessons": [],
+      "points": [
+        "二 长方体（一）"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "三 分数乘法",
+      "lessons": [],
+      "points": [
+        "三 分数乘法"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "四 长方体（二）",
+      "lessons": [],
+      "points": [
+        "四 长方体（二）"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "整理与复习",
+      "lessons": [],
+      "points": [
+        "整理与复习"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "五 分数除法",
+      "lessons": [],
+      "points": [
+        "五 分数除法"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "六 确定位置",
+      "lessons": [],
+      "points": [
+        "六 确定位置"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "七 用方程解决问题",
+      "lessons": [],
+      "points": [
+        "七 用方程解决问题"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "数学好玩",
+      "lessons": [],
+      "points": [
+        "数学好玩"
+      ]
+    },
+    {
+      "id": "u10",
+      "name": "八 数据的表示和分析",
+      "lessons": [],
+      "points": [
+        "八 数据的表示和分析"
+      ]
+    },
+    {
+      "id": "u11",
+      "name": "总复习",
+      "lessons": [],
+      "points": [
+        "总复习"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/课时范围内，禁止超纲",
+    "单元测试只考所选单元课时",
+    "期中覆盖前半册单元，期末覆盖全册",
+    "目录来源（电子课本网）：http://www.dzkbw.com/books/bsd/shuxue/5x/",
+    "风格可参考智慧教育平台同步课堂与基础性作业 https://basic.smartedu.cn/syncClassroom"
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "subject": "math",
+  "edition": "beishida",
+  "grade": 2,
+  "semester": "xia",
+  "title": "二年级数学下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 电子课本网目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "单元/课时目录来自电子课本网公开页 bookmulu；命题对齐智慧教育平台同步课程。不含教材正文。",
+    "editionLabel": "北师大版",
+    "subjectLabel": "数学",
+    "catalogRef": "http://www.dzkbw.com/books/bsd/shuxue/xs2x_2026/",
+    "smarteduPathHint": "小学 → 2年级 → 数学 → 北师大版 → 下册",
+    "entryCount": 11,
+    "unitCount": 11
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "第一单元 100以内数加与减（三）",
+      "lessons": [],
+      "points": [
+        "第一单元 100以内数加与减（三）"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "第二单元 图形大变身（二）",
+      "lessons": [],
+      "points": [
+        "第二单元 图形大变身（二）"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "第三单元 除法的应用",
+      "lessons": [],
+      "points": [
+        "第三单元 除法的应用"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "综合实践 参加趣味运动会",
+      "lessons": [],
+      "points": [
+        "综合实践 参加趣味运动会"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "第四单元 生活中的大数",
+      "lessons": [],
+      "points": [
+        "第四单元 生活中的大数"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "第五单元 有趣的平面图形（二）",
+      "lessons": [],
+      "points": [
+        "第五单元 有趣的平面图形（二）"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "数学好玩 有趣的推理",
+      "lessons": [],
+      "points": [
+        "数学好玩 有趣的推理"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "第六单元 大数加与减（一）",
+      "lessons": [],
+      "points": [
+        "第六单元 大数加与减（一）"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "第七单元 分类",
+      "lessons": [],
+      "points": [
+        "第七单元 分类"
+      ]
+    },
+    {
+      "id": "u10",
+      "name": "综合实践 发现身体上的尺子",
+      "lessons": [],
+      "points": [
+        "综合实践 发现身体上的尺子"
+      ]
+    },
+    {
+      "id": "u11",
+      "name": "总复习",
+      "lessons": [],
+      "points": [
+        "总复习"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/课时范围内，禁止超纲",
+    "单元测试只考所选单元课时",
+    "期中覆盖前半册单元，期末覆盖全册",
+    "目录来源（电子课本网）：http://www.dzkbw.com/books/bsd/shuxue/xs2x_2026/",
+    "风格可参考智慧教育平台同步课堂与基础性作业 https://basic.smartedu.cn/syncClassroom"
+  ]
+}

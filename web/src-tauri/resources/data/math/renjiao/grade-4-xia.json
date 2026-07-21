@@ -1,0 +1,132 @@
+{
+  "subject": "math",
+  "edition": "renjiao",
+  "grade": 4,
+  "semester": "xia",
+  "title": "四年级下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "人教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 4年级 → 数学 → 人教版 → 下册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "四则运算",
+      "lessons": [
+        "运算顺序",
+        "括号"
+      ],
+      "points": [
+        "四则"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "观察物体（二）",
+      "lessons": [
+        "从三个方向观察"
+      ],
+      "points": [
+        "视图"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "运算律",
+      "lessons": [
+        "交换结合分配",
+        "简算"
+      ],
+      "points": [
+        "运算律"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "小数的意义和性质",
+      "lessons": [
+        "数位",
+        "大小比较",
+        "改写"
+      ],
+      "points": [
+        "小数"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "三角形",
+      "lessons": [
+        "分类",
+        "内角和"
+      ],
+      "points": [
+        "三角形"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "小数的加法和减法",
+      "lessons": [
+        "计算",
+        "验算"
+      ],
+      "points": [
+        "小数加减"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "图形的运动（二）",
+      "lessons": [
+        "轴对称平移"
+      ],
+      "points": [
+        "变换"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "平均数与条形统计图",
+      "lessons": [
+        "平均数"
+      ],
+      "points": [
+        "统计"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "数学广角—鸡兔同笼",
+      "lessons": [
+        "假设法"
+      ],
+      "points": [
+        "策略"
+      ]
+    },
+    {
+      "id": "u10",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

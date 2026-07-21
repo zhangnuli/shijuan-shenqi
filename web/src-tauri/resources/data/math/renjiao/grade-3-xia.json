@@ -1,0 +1,121 @@
+{
+  "subject": "math",
+  "edition": "renjiao",
+  "grade": 3,
+  "semester": "xia",
+  "title": "三年级下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "人教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 3年级 → 数学 → 人教版 → 下册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "位置与方向（一）",
+      "lessons": [
+        "东南西北"
+      ],
+      "points": [
+        "方向"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "除数是一位数的除法",
+      "lessons": [
+        "口算笔算",
+        "验算"
+      ],
+      "points": [
+        "除法"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "复式统计表",
+      "lessons": [
+        "统计"
+      ],
+      "points": [
+        "读表"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "两位数乘两位数",
+      "lessons": [
+        "笔算",
+        "估算"
+      ],
+      "points": [
+        "乘法"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "面积",
+      "lessons": [
+        "面积单位",
+        "长方形正方形面积"
+      ],
+      "points": [
+        "面积"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "年、月、日",
+      "lessons": [
+        "平年闰年",
+        "24 时计时法"
+      ],
+      "points": [
+        "时间"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "小数的初步认识",
+      "lessons": [
+        "小数意义",
+        "简单加减"
+      ],
+      "points": [
+        "小数"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "数学广角—搭配（二）",
+      "lessons": [
+        "排列组合初步"
+      ],
+      "points": [
+        "有序"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

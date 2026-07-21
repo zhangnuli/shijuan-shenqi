@@ -1,0 +1,89 @@
+{
+  "subject": "math",
+  "edition": "renjiao",
+  "grade": 6,
+  "semester": "xia",
+  "title": "六年级下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "人教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 6年级 → 数学 → 人教版 → 下册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "负数",
+      "lessons": [
+        "意义",
+        "大小比较"
+      ],
+      "points": [
+        "负数"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "百分数（二）",
+      "lessons": [
+        "折扣利息税率等"
+      ],
+      "points": [
+        "百分数应用"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "圆柱与圆锥",
+      "lessons": [
+        "侧面积体积"
+      ],
+      "points": [
+        "立体"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "比例",
+      "lessons": [
+        "正反比例"
+      ],
+      "points": [
+        "比例"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "数学广角—鸽巢问题",
+      "lessons": [
+        "抽屉原理"
+      ],
+      "points": [
+        "策略"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "整理和复习",
+      "lessons": [
+        "数与代数",
+        "图形几何",
+        "统计概率"
+      ],
+      "points": [
+        "小学总复习"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

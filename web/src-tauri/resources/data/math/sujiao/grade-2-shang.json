@@ -1,0 +1,122 @@
+{
+  "subject": "math",
+  "edition": "sujiao",
+  "grade": 2,
+  "semester": "shang",
+  "title": "二年级上册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "苏教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 2年级 → 数学 → 苏教版 → 上册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "长度单位",
+      "lessons": [
+        "厘米米",
+        "测量"
+      ],
+      "points": [
+        "单位选择"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "100 以内的加法和减法（二）",
+      "lessons": [
+        "两位数加减",
+        "进退位"
+      ],
+      "points": [
+        "竖式验算"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "角的初步认识",
+      "lessons": [
+        "角",
+        "直角"
+      ],
+      "points": [
+        "角的判断"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "表内乘法（一）",
+      "lessons": [
+        "乘法意义",
+        "2～6 口诀"
+      ],
+      "points": [
+        "表内乘法"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "观察物体（一）",
+      "lessons": [
+        "不同位置观察"
+      ],
+      "points": [
+        "空间观念"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "表内乘法（二）",
+      "lessons": [
+        "7～9 口诀",
+        "解决问题"
+      ],
+      "points": [
+        "综合应用"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "认识时间",
+      "lessons": [
+        "时分",
+        "经过时间"
+      ],
+      "points": [
+        "时间计算"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "数学广角—搭配（一）",
+      "lessons": [
+        "简单搭配"
+      ],
+      "points": [
+        "有序思考"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}

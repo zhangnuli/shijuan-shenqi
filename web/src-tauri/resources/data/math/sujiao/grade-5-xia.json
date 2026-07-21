@@ -1,0 +1,119 @@
+{
+  "subject": "math",
+  "edition": "sujiao",
+  "grade": 5,
+  "semester": "xia",
+  "title": "五年级下册",
+  "source": {
+    "platform": "国家中小学智慧教育平台 + 教材公开目录",
+    "platformUrl": "https://basic.smartedu.cn/",
+    "classroomUrl": "https://basic.smartedu.cn/syncClassroom",
+    "materialUrl": "https://basic.smartedu.cn/tchMaterial",
+    "elecEduUrl": "https://basic.smartedu.cn/elecEdu",
+    "catalogSite": "http://www.dzkbw.com/",
+    "note": "课标大纲用于命题/教案约束，不含教材正文。",
+    "editionLabel": "苏教版",
+    "subjectLabel": "数学",
+    "smarteduPathHint": "小学 → 5年级 → 数学 → 苏教版 → 下册"
+  },
+  "units": [
+    {
+      "id": "u1",
+      "name": "观察物体（三）",
+      "lessons": [
+        "立体图形观察"
+      ],
+      "points": [
+        "空间"
+      ]
+    },
+    {
+      "id": "u2",
+      "name": "因数与倍数",
+      "lessons": [
+        "特征",
+        "质合数"
+      ],
+      "points": [
+        "因数倍数"
+      ]
+    },
+    {
+      "id": "u3",
+      "name": "长方体和正方体",
+      "lessons": [
+        "表面积体积"
+      ],
+      "points": [
+        "立体"
+      ]
+    },
+    {
+      "id": "u4",
+      "name": "分数的意义和性质",
+      "lessons": [
+        "约分通分",
+        "真假分数"
+      ],
+      "points": [
+        "分数"
+      ]
+    },
+    {
+      "id": "u5",
+      "name": "图形的运动（三）",
+      "lessons": [
+        "旋转"
+      ],
+      "points": [
+        "变换"
+      ]
+    },
+    {
+      "id": "u6",
+      "name": "分数的加法和减法",
+      "lessons": [
+        "异分母",
+        "混合运算"
+      ],
+      "points": [
+        "分数加减"
+      ]
+    },
+    {
+      "id": "u7",
+      "name": "折线统计图",
+      "lessons": [
+        "数据分析"
+      ],
+      "points": [
+        "统计"
+      ]
+    },
+    {
+      "id": "u8",
+      "name": "数学广角—找次品",
+      "lessons": [
+        "优化策略"
+      ],
+      "points": [
+        "策略"
+      ]
+    },
+    {
+      "id": "u9",
+      "name": "总复习",
+      "lessons": [
+        "综合"
+      ],
+      "points": [
+        "全册综合"
+      ]
+    }
+  ],
+  "examHints": [
+    "命题必须落在本册单元/所选课时范围内",
+    "单元测试聚焦所选单元与课时",
+    "期中覆盖前半册，期末覆盖全册"
+  ]
+}
