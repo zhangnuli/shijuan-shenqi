@@ -63,9 +63,19 @@ export async function checkForAppUpdate(): Promise<UpdateCheckResult> {
     }
   } catch (e) {
     const msg = String(e)
-    // 端点未配置 / 网络失败时抛给调用方
-    throw new Error(msg.includes('error sending request') || msg.includes('error trying to connect')
-      ? `无法连接更新服务器。请检查网络，或确认 tauri.conf.json 中 updater.endpoints 已改为有效地址。\n原始错误：${msg}`
-      : msg)
+    // 端点未配置 / 网络失败 / 清单缺失时给出可读说明
+    if (msg.includes('error sending request') || msg.includes('error trying to connect')) {
+      throw new Error(
+        `无法连接更新服务器。请检查网络是否可访问 GitHub Releases。\n原始错误：${msg}`,
+      )
+    }
+    if (
+      /valid release JSON|latest\.json|404|Not Found|failed to check for update/i.test(msg)
+    ) {
+      throw new Error(
+        `无法读取更新清单（latest.json）。请确认已发布 Release 且 Assets 中有 latest.json：\nhttps://github.com/zhangnuli/shijuan-shenqi/releases\n原始错误：${msg}`,
+      )
+    }
+    throw new Error(msg)
   }
 }

@@ -128,8 +128,71 @@ jobs:
             - 课标数据仅为公开目录大纲，不含教材正文。
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          # 官方参数名是 uploadUpdaterJson（旧名 includeUpdaterJson 会被忽略 → 不上传 latest.json）
+          uploadUpdaterJson: true
           updaterJsonPreferNsis: true
+          # 避免中文 productName 在 GitHub Asset 被剥空变成 _0.1.0_x64-setup.exe
+          releaseAssetNamePattern: shijuan-shenqi_[version]_[platform]_[arch][ext]
+
+      - name: Ensure latest.json on Release
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          # 若 tauri-action 已上传则跳过
+          if curl -fsI "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/latest.json" >/dev/null 2>&1; then
+            echo "latest.json already present"
+            exit 0
+          fi
+          echo "latest.json missing — generating fallback from release assets"
+          # 优先 NSIS setup.exe
+          ASSET_API="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}"
+          META=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$ASSET_API")
+          # 找 setup.exe 与对应 .sig
+          export SETUP_URL
+          SETUP_URL=$(echo "$META" | node -e "
+            let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{
+              const j=JSON.parse(d);
+              const a=(j.assets||[]).find(x=>/setup\\.exe$/i.test(x.name) && !/\\.sig$/i.test(x.name));
+              if(!a){ console.error('no setup.exe asset'); process.exit(1); }
+              console.log(a.browser_download_url);
+            });
+          ")
+          export SIG
+          SIG=$(curl -fsSL "${SETUP_URL}.sig" | tr -d '\r')
+          if [[ -z "$SIG" || -z "$SETUP_URL" ]]; then
+            echo "missing SETUP_URL or SIG"
+            exit 1
+          fi
+          node -e "
+            const fs=require('fs');
+            const payload={
+              version: process.env.VERSION,
+              notes: 'v'+process.env.VERSION,
+              pub_date: new Date().toISOString(),
+              platforms: {
+                'windows-x86_64': {
+                  signature: process.env.SIG,
+                  url: process.env.SETUP_URL
+                }
+              }
+            };
+            fs.writeFileSync('latest.json', JSON.stringify(payload,null,2));
+            console.log(JSON.stringify(payload,null,2));
+          "
+          # 上传到该 Release
+          REL_ID=$(echo "$META" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).id))")
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @latest.json \
+            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${REL_ID}/assets?name=latest.json"
+          echo "Uploaded fallback latest.json"
 
       - name: Build only (dry-run)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
