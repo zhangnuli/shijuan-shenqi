@@ -24,6 +24,11 @@ import {
 } from 'docx'
 import type { ExamItem, ExamPaper, ExamSection } from './types'
 import { brandLines, type BrandHeader } from './brand'
+import {
+  isCalculationSection,
+  isCompactCalculationItem,
+  stripItemNumber,
+} from './examLayout'
 
 const PAGE_W = 11906 // A4
 const PAGE_H = 16838
@@ -294,8 +299,7 @@ function calcBoxes(exprs: string[], cols = 2): Table {
 }
 
 function isCalcSection(type: string, title: string) {
-  const t = `${type}${title}`
-  return /calc|计算|口算|竖式|脱式|直接写出/.test(t)
+  return isCalculationSection(type, title)
 }
 
 function isChoiceSection(type: string, title: string) {
@@ -363,6 +367,10 @@ function renderItem(
 
   // —— 计算题：尽量分栏 ——
   if (isCalcSection(type, title) && !withAnswers) {
+    if (isCompactCalculationItem(item, type, title)) {
+      out.push(para(stem, { after: 40, line: 320 }))
+      return out
+    }
     const inline = splitInlineCalcs(item.stem || '')
     if (
       inline.length >= 3 &&
@@ -454,27 +462,32 @@ function renderSection(sec: ExamSection, withAnswers: boolean): DocChild[] {
   const out: DocChild[] = [sectionHead(sec.title || '大题')]
   const items = sec.items || []
 
-  // 整大题都是短口算时，合并成一张分栏表
-  if (
-    !withAnswers &&
-    isCalcSection(sec.type || '', sec.title || '') &&
-    items.length >= 4 &&
-    items.every((it) => {
-      const s = it.stem || ''
-      return s.length < 40 && /[0-9].*[+\-×÷]/.test(s)
+  if (!withAnswers && isCalcSection(sec.type || '', sec.title || '')) {
+    let compactRun: Array<{ item: ExamItem; index: number; expr: string }> = []
+    const flushCompactRun = () => {
+      if (!compactRun.length) return
+      if (compactRun.length >= 2) out.push(calcGrid(compactRun.map((entry) => entry.expr), 4))
+      else out.push(...renderItem(compactRun[0].item, compactRun[0].index, sec, withAnswers))
+      compactRun = []
+    }
+    items.forEach((item, idx) => {
+      if (isCompactCalculationItem(item, sec.type, sec.title)) {
+        const raw = stripItemNumber(item.stem || '')
+        compactRun.push({
+          item,
+          index: idx + 1,
+          expr: raw.includes('＝') || raw.includes('=') ? raw : `${raw}＝`,
+        })
+        return
+      }
+      flushCompactRun()
+      out.push(...renderItem(item, idx + 1, sec, withAnswers))
     })
-  ) {
-    const exprs = items.map((it, i) => {
-      const raw = (it.stem || '').replace(/^[\d]+[\.、．)\s]*/, '').trim()
-      return raw.includes('＝') || raw.includes('=') ? raw : `${raw}＝`
-    })
-    out.push(calcGrid(exprs, 4))
+    flushCompactRun()
     return out
   }
 
-  items.forEach((item, idx) => {
-    out.push(...renderItem(item, idx + 1, sec, withAnswers))
-  })
+  items.forEach((item, idx) => out.push(...renderItem(item, idx + 1, sec, withAnswers)))
   return out
 }
 

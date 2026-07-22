@@ -40,6 +40,7 @@ import { renderLessonDocx, buildLessonPrintHtml } from './renderLessonDocx'
 import { saveDocxFile } from './saveFile'
 import { printHtml } from './printExam'
 import { buildEbookPrintHtml, type EbookUnitPages } from './buildEbookPrintHtml'
+import { isCalculationSection, isCompactCalculationItem } from './examLayout'
 import type { BrandHeader } from './brand'
 import { aiSteps, aiTips, formatFriendlyError, useAiProgress } from './composables/useAiProgress'
 import { invokeCommand as invoke } from './services/tauriClient'
@@ -2395,18 +2396,18 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
       const isProblem = /解决|应用|problem|操作|实践/i.test(kind)
       const isWriting = /习作|作文|writing|小练笔/i.test(kind)
       const isReading = /阅读|reading/i.test(kind)
-      const isCalc = /计算|口算|竖式|脱式|calc|直接写出/i.test(kind)
+      const isCalc = isCalculationSection(sec.type, sec.title)
       const isChoice = /choice|选择/i.test(kind)
       const isJudge = /judge|判断/i.test(kind)
       const isFill = /fill|填空|拼音|积累|字词|默写/i.test(kind)
 
-      const items = (sec.items || [])
-        .map((item, idx) => {
+      const renderedItems = (sec.items || []).map((item, idx) => {
           const stem = (item.stem || `${idx + 1}.`).replace(/</g, '&lt;').replace(/>/g, '&gt;')
           const opts = (item.options || [])
             .map((o) => `<span class="opt">${String(o).replace(/</g, '&lt;')}</span>`)
             .join('')
           const optsBlock = opts ? `<div class="opts">${opts}</div>` : ''
+          const compactCalc = isCompactCalculationItem(item, sec.type, sec.title)
           const ans = withAnswers
             ? `<div class="ans">答案：${String(item.answer ?? '略').replace(/</g, '&lt;')}</div>`
             : ''
@@ -2419,7 +2420,7 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
               blank = `<div class="write-lines">${'<div class="wline"></div>'.repeat(12)}</div>`
             } else if (isReading) {
               blank = `<div class="write-lines short">${'<div class="wline"></div>'.repeat(3)}</div>`
-            } else if (isCalc) {
+            } else if (isCalc && !compactCalc) {
               blank = `<div class="calc-space"></div>`
             } else if (isChoice || isJudge || isFill) {
               blank = ''
@@ -2427,10 +2428,28 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
               blank = `<div class="item-gap"></div>`
             }
           }
-          return `<div class="item"><div class="stem">${stem.replace(/\n/g, '<br/>')}</div>${optsBlock}${blank}${ans}</div>`
+          return {
+            compact: compactCalc,
+            html: `<div class="item${compactCalc ? ' calc-item' : ''}"><div class="stem">${stem.replace(/\n/g, '<br/>')}</div>${optsBlock}${blank}${ans}</div>`,
+          }
         })
-        .join('')
-      return `<div class="sec"><h2>${(sec.title || '').replace(/</g, '&lt;')}</h2>${items}</div>`
+      const items: string[] = []
+      let compactRun: string[] = []
+      const flushCompactRun = () => {
+        if (compactRun.length) {
+          items.push(`<div class="calc-grid">${compactRun.join('')}</div>`)
+          compactRun = []
+        }
+      }
+      for (const rendered of renderedItems) {
+        if (rendered.compact) compactRun.push(rendered.html)
+        else {
+          flushCompactRun()
+          items.push(rendered.html)
+        }
+      }
+      flushCompactRun()
+      return `<div class="sec"><h2>${(sec.title || '').replace(/</g, '&lt;')}</h2>${items.join('')}</div>`
     })
     .join('')
 
@@ -2500,6 +2519,15 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
   }
   .item { margin-bottom: 5px; page-break-inside: avoid; }
   .stem { white-space: pre-wrap; }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 18px;
+    margin: 4px 0 8px;
+    page-break-inside: avoid;
+  }
+  .calc-grid .calc-item { margin: 0; min-height: 24px; }
+  .calc-grid .calc-item .stem { white-space: nowrap; }
   .opts {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2512,7 +2540,7 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
   .write-lines { margin: 3px 0 6px; }
   .write-lines.short .wline { height: 20px; }
   .wline { height: 22px; border-bottom: 1px solid #333; margin-bottom: 1px; }
-  .calc-space { height: 36px; margin: 2px 0 4px; }
+  .calc-space { height: 64px; margin: 2px 0 6px; }
   .ans { color: #000; margin-top: 2px; font-size: 10pt; }
   .school { text-align:center; font-family:"黑体",SimHei,sans-serif; font-size:11pt; font-weight:bold; margin:0 0 2px; }
   .end {
