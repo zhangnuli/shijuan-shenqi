@@ -533,32 +533,19 @@ async fn ebook_catalog(base_url: String, res_id: String) -> Result<ebook_site::E
         .map_err(|e| format!("任务失败: {e}"))?
 }
 
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct EbookUnitPagesReq {
+/// 拉取某单元页图列表（用于打印正文页）
+/// 参数与前端 camelCase 对齐：baseUrl / resId / bookId / contributeId / maxPages
+#[tauri::command]
+async fn ebook_unit_pages(
     base_url: String,
     res_id: String,
     book_id: String,
     contribute_id: String,
-    #[serde(default = "default_ebook_max_pages")]
-    max_pages: u32,
-}
-
-fn default_ebook_max_pages() -> u32 {
-    30
-}
-
-/// 拉取某单元页图列表（用于打印正文页）
-#[tauri::command]
-async fn ebook_unit_pages(req: EbookUnitPagesReq) -> Result<ebook_site::EbookUnitPages, String> {
+    max_pages: Option<u32>,
+) -> Result<ebook_site::EbookUnitPages, String> {
+    let max_pages = max_pages.unwrap_or(30);
     tauri::async_runtime::spawn_blocking(move || {
-        ebook_site::fetch_unit_pages(
-            &req.base_url,
-            &req.res_id,
-            &req.book_id,
-            &req.contribute_id,
-            req.max_pages,
-        )
+        ebook_site::fetch_unit_pages(&base_url, &res_id, &book_id, &contribute_id, max_pages)
     })
     .await
     .map_err(|e| format!("任务失败: {e}"))?

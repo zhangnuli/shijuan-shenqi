@@ -1,6 +1,6 @@
 {
   "name": "shijuan-shenqi-root",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "试卷神器 - 根目录快捷脚本",
   "dependencies": {
