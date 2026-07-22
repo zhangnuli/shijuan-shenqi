@@ -1,9 +1,17 @@
 /**
  * 桌面端友好打印：
- * Tauri 里 window.open 常被拦截，改为隐藏 iframe 调起系统打印对话框。
+ * - Tauri：用 Edge/Chrome 无头导出 PDF（--no-pdf-header-footer），避免页脚出现 tauri.localhost
+ * - 浏览器预览：回退为隐藏 iframe + window.print()
  */
 
+import { invoke } from '@tauri-apps/api/core'
+import { openPath } from '@tauri-apps/plugin-opener'
+
 let activeFrame: HTMLIFrameElement | null = null
+
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+}
 
 function cleanupFrame() {
   if (activeFrame && activeFrame.parentNode) {
@@ -12,17 +20,14 @@ function cleanupFrame() {
   activeFrame = null
 }
 
-/**
- * 将 HTML 送入 iframe 并调起打印
- */
-export function printHtml(html: string): Promise<void> {
+/** iframe 回退（非 Tauri 或 PDF 导出失败时） */
+function printHtmlViaIframe(html: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
       cleanupFrame()
 
       const iframe = document.createElement('iframe')
       iframe.setAttribute('title', 'print-frame')
-      // 不可见，但保持一定尺寸（部分 WebView 对 0×0 不触发打印）
       iframe.style.cssText = [
         'position:fixed',
         'right:0',
@@ -54,7 +59,6 @@ export function printHtml(html: string): Promise<void> {
       const finish = () => {
         if (done) return
         done = true
-        // 稍等再移除，避免打印对话框未弹出就被销毁
         setTimeout(() => {
           cleanupFrame()
           resolve()
@@ -64,10 +68,8 @@ export function printHtml(html: string): Promise<void> {
       const triggerPrint = () => {
         try {
           win.focus()
-          // 打印结束后清理
           win.onafterprint = () => finish()
           win.print()
-          // 部分环境不触发 afterprint，超时兜底
           setTimeout(finish, 60_000)
         } catch (e) {
           cleanupFrame()
@@ -75,12 +77,10 @@ export function printHtml(html: string): Promise<void> {
         }
       }
 
-      // 图片/字体就绪
       if (doc.readyState === 'complete') {
         setTimeout(triggerPrint, 150)
       } else {
         iframe.onload = () => setTimeout(triggerPrint, 150)
-        // 兜底
         setTimeout(triggerPrint, 500)
       }
     } catch (e) {
@@ -88,4 +88,29 @@ export function printHtml(html: string): Promise<void> {
       reject(e)
     }
   })
+}
+
+export type PrintHtmlResult = {
+  /** pdf：已打开无系统页眉的 PDF；iframe：回退系统打印（可能带 URL 页脚） */
+  mode: 'pdf' | 'iframe'
+  pdfPath?: string
+}
+
+/**
+ * 打印 HTML。Tauri 下优先生成 PDF 并用系统默认程序打开，再由用户打印。
+ */
+export async function printHtml(html: string): Promise<PrintHtmlResult> {
+  if (isTauri()) {
+    try {
+      const pdfPath = await invoke<string>('print_html_document', { html })
+      await openPath(pdfPath)
+      return { mode: 'pdf', pdfPath }
+    } catch (e) {
+      console.warn('[print] PDF 导出失败，回退 iframe 打印', e)
+      await printHtmlViaIframe(html)
+      return { mode: 'iframe' }
+    }
+  }
+  await printHtmlViaIframe(html)
+  return { mode: 'iframe' }
 }

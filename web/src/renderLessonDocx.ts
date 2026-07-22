@@ -196,9 +196,21 @@ export async function renderLessonDocx(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  run('第 ', { size: 14 }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 14, font: '宋体' }),
-                  run(' 页', { size: 14 }),
+                  new TextRun({ text: '教案 · 第 ', size: 16, font: '宋体', color: '444444' }),
+                  new TextRun({
+                    children: [PageNumber.CURRENT],
+                    size: 16,
+                    font: 'Arial',
+                    color: '444444',
+                  }),
+                  new TextRun({ text: ' / ', size: 16, font: 'Arial', color: '444444' }),
+                  new TextRun({
+                    children: [PageNumber.TOTAL_PAGES],
+                    size: 16,
+                    font: 'Arial',
+                    color: '444444',
+                  }),
+                  new TextRun({ text: ' 页', size: 16, font: '宋体', color: '444444' }),
                 ],
               }),
             ],
@@ -294,9 +306,26 @@ async function renderParentGuideDocx(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  run('第 ', { size: 14 }),
-                  new TextRun({ children: [PageNumber.CURRENT], size: 14, font: '宋体' }),
-                  run(' 页', { size: 14 }),
+                  new TextRun({
+                    text: '家长辅导手册 · 第 ',
+                    size: 16,
+                    font: '宋体',
+                    color: '444444',
+                  }),
+                  new TextRun({
+                    children: [PageNumber.CURRENT],
+                    size: 16,
+                    font: 'Arial',
+                    color: '444444',
+                  }),
+                  new TextRun({ text: ' / ', size: 16, font: 'Arial', color: '444444' }),
+                  new TextRun({
+                    children: [PageNumber.TOTAL_PAGES],
+                    size: 16,
+                    font: 'Arial',
+                    color: '444444',
+                  }),
+                  new TextRun({ text: ' 页', size: 16, font: '宋体', color: '444444' }),
                 ],
               }),
             ],
@@ -339,10 +368,10 @@ export function buildLessonPrintHtml(
       .join('')
     return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"/><title>${esc(g?.title || '家长辅导手册')}</title>
 <style>
-@page{size:A4;margin:14mm}
-body{font-family:"宋体",SimSun,serif;font-size:11pt;line-height:1.65;color:#000;margin:0}
-h1{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:18pt;margin:0 0 8px}
-h2{font-family:"黑体",SimHei,sans-serif;font-size:12pt;margin:14px 0 6px;border-bottom:1px solid #000;padding-bottom:2px}
+@page{size:A4;margin:12mm 11mm 16mm 11mm;@bottom-center{content:"家长辅导手册 · 第 " counter(page) " 页";font-family:"宋体",SimSun,serif;font-size:9pt;color:#333}}
+body{font-family:"宋体",SimSun,serif;font-size:10.5pt;line-height:1.45;color:#000;margin:0}
+h1{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:16pt;margin:0 0 6px}
+h2{font-family:"黑体",SimHei,sans-serif;font-size:11pt;margin:10px 0 4px;border-bottom:1px solid #000;padding-bottom:2px}
 .school{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:12pt;font-weight:bold;margin:0 0 4px}
 .sub{text-align:center;font-size:10.5pt;margin-bottom:6px}
 ul{margin:4px 0 8px 1.2em;padding:0}
@@ -379,10 +408,10 @@ ${brands}
 
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"/><title>${esc(m.title || '教案')}</title>
 <style>
-@page{size:A4;margin:14mm}
-body{font-family:"宋体",SimSun,serif;font-size:11pt;line-height:1.6;color:#000;margin:0}
-h1{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:18pt;margin:0 0 8px}
-h2{font-family:"黑体",SimHei,sans-serif;font-size:12pt;margin:14px 0 6px;border-bottom:1px solid #000;padding-bottom:2px}
+@page{size:A4;margin:12mm 11mm 16mm 11mm;@bottom-center{content:"教案 · 第 " counter(page) " 页";font-family:"宋体",SimSun,serif;font-size:9pt;color:#333}}
+body{font-family:"宋体",SimSun,serif;font-size:10.5pt;line-height:1.45;color:#000;margin:0}
+h1{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:16pt;margin:0 0 6px}
+h2{font-family:"黑体",SimHei,sans-serif;font-size:11pt;margin:10px 0 4px;border-bottom:1px solid #000;padding-bottom:2px}
 .school{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:12pt;font-weight:bold;margin:0 0 4px}
 .sub,.meta{text-align:center;font-size:10.5pt;margin-bottom:6px}
 table{width:100%;border-collapse:collapse;margin:8px 0;font-size:10pt}

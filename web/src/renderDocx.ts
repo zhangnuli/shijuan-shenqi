@@ -27,7 +27,7 @@ import { brandLines, type BrandHeader } from './brand'
 
 const PAGE_W = 11906 // A4
 const PAGE_H = 16838
-const MARGIN = 850 // ~1.5cm，接近试卷留白
+const MARGIN = 720 // ~1.27cm，略收边距，多装内容
 const CONTENT_W = PAGE_W - MARGIN * 2
 
 const thin = { style: BorderStyle.SINGLE as const, size: 8, color: '000000' }
@@ -72,16 +72,16 @@ function para(
     alignment: opts.center ? AlignmentType.CENTER : AlignmentType.LEFT,
     spacing: {
       before: opts.before ?? 0,
-      after: opts.after ?? 60,
-      line: opts.line ?? 360,
+      after: opts.after ?? 40,
+      line: opts.line ?? 300,
     },
     indent: opts.indent ? { firstLine: opts.indent } : undefined,
     children: kids,
   })
 }
 
-/** 空白行（加大行距，方便小学生书写） */
-function emptyLines(n: number, after = 120, line = 480): Paragraph[] {
+/** 空白行（适中行距，避免整页太空） */
+function emptyLines(n: number, after = 60, line = 360): Paragraph[] {
   return Array.from({ length: n }, () =>
     new Paragraph({
       spacing: { after, line },
@@ -94,7 +94,7 @@ function emptyLines(n: number, after = 120, line = 480): Paragraph[] {
 function answerLines(n: number): Paragraph[] {
   return Array.from({ length: n }, () =>
     new Paragraph({
-      spacing: { after: 80, line: 520 },
+      spacing: { after: 40, line: 360 },
       border: bottomOnly,
       children: [run('　')],
     }),
@@ -104,7 +104,7 @@ function answerLines(n: number): Paragraph[] {
 /** 大题标题：一、填空题（…） */
 function sectionHead(title: string) {
   return new Paragraph({
-    spacing: { before: 200, after: 120, line: 360 },
+    spacing: { before: 120, after: 60, line: 300 },
     children: [run(title, { bold: true, size: 22, font: '黑体' })],
   })
 }
@@ -235,14 +235,13 @@ function calcGrid(items: string[], cols = 4): Table {
             new TableCell({
               borders: noBorders,
               width: { size: widths[j], type: WidthType.DXA },
-              margins: { top: 80, bottom: 120, left: 40, right: 40 },
+              margins: { top: 40, bottom: 60, left: 40, right: 40 },
               children: [
                 para(expr ? `${expr.replace(/＝\s*$/, '').replace(/=\s*$/, '')}＝` : '　', {
-                  after: 40,
+                  after: 20,
                 }),
-                // 口算得数书写区（加高）
-                para('　　', { after: 80, line: 480 }),
-                para('　　', { after: 60, line: 400 }),
+                // 口算得数书写区（一行即可）
+                para('　　', { after: 40, line: 320 }),
               ],
             }),
         ),
@@ -273,13 +272,13 @@ function calcBoxes(exprs: string[], cols = 2): Table {
             new TableCell({
               borders: thinBorders,
               width: { size: widths[j], type: WidthType.DXA },
-              margins: { top: 120, bottom: 160, left: 100, right: 100 },
+              margins: { top: 60, bottom: 80, left: 80, right: 80 },
               children: expr
                 ? [
-                    para(expr, { center: true, after: 80 }),
-                    para('＝', { center: true, after: 60 }),
-                    // 竖式/脱式步骤区：多留空白
-                    ...emptyLines(7, 100, 500),
+                    para(expr, { center: true, after: 40 }),
+                    para('＝', { center: true, after: 30 }),
+                    // 竖式/脱式步骤区：适中留白
+                    ...emptyLines(4, 50, 360),
                   ]
                 : [para('　')],
             }),
@@ -429,41 +428,23 @@ function renderItem(
     return out
   }
 
-  // 学生卷答题区（按小学生书写习惯加大留白）
+  // 学生卷答题区：按题型适度留白；数学应用/计算不画下划线
   if (isProblemSection(type, title)) {
-    out.push(para('解：', { after: 60, before: 40 }))
-    // 解题过程：约 8～10 行书写位
-    out.push(...answerLines(9))
-    out.push(para('　', { after: 40 }))
-    out.push(
-      para([run('答：', { bold: true }), run('________________________________________')], {
-        after: 60,
-      }),
-    )
-    out.push(...answerLines(2))
-    out.push(para('　', { after: 160 }))
+    out.push(...emptyLines(5, 40, 360))
   } else if (isWritingSection(type, title)) {
-    // 习作：更多行 + 更高行距
-    out.push(...answerLines(20))
-    out.push(para('　', { after: 120 }))
+    out.push(...answerLines(12))
   } else if (isReadingSection(type, title)) {
-    // 阅读简答
-    out.push(...answerLines(6))
-    out.push(para('　', { after: 100 }))
-  } else if (isCalcSection(type, title)) {
-    // 未分栏的计算题
-    out.push(...emptyLines(5, 100, 500))
-    out.push(para('　', { after: 80 }))
-  } else if (isChoiceSection(type, title) || isJudgeSection(type, title)) {
-    // 选择/判断：题与题之间多一点空隙
-    out.push(para('　', { after: 100, line: 400 }))
-  } else if (/fill|填空|拼音|积累|字词/.test(`${type}${title}`)) {
-    // 填空：题后多空一行，便于改错/补写
-    out.push(...answerLines(2))
-    out.push(para('　', { after: 100 }))
-  } else {
     out.push(...answerLines(3))
-    out.push(para('　', { after: 100 }))
+  } else if (isCalcSection(type, title)) {
+    out.push(...emptyLines(2, 40, 320))
+  } else if (isChoiceSection(type, title) || isJudgeSection(type, title)) {
+    // 选择/判断：题干+选项即可，仅留极小间距
+    out.push(para('', { after: 40, line: 240 }))
+  } else if (/fill|填空|拼音|积累|字词|默写/.test(`${type}${title}`)) {
+    // 填空一般已在题干中留空，不再叠答题线
+    out.push(para('', { after: 40, line: 240 }))
+  } else {
+    out.push(...emptyLines(1, 40, 320))
   }
 
   return out
@@ -525,11 +506,11 @@ export async function renderExamDocx(
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 80, after: 40, line: 400 },
+      spacing: { before: 40, after: 20, line: 320 },
       children: [
         run(withAnswers ? `${meta.title || '试卷'}（参考答案）` : meta.title || '试卷', {
           bold: true,
-          size: 36,
+          size: 32,
           font: '黑体',
         }),
       ],
@@ -549,7 +530,7 @@ export async function renderExamDocx(
   children.push(
     para(
       `${sub}　　满分${meta.totalScore ?? 100}分　　时间${meta.durationMin ?? 60}分钟`,
-      { center: true, after: 120 },
+      { center: true, after: 60 },
     ),
   )
 
@@ -559,29 +540,27 @@ export async function renderExamDocx(
       children.push(
         para(`班级：${brand.className.trim()}　　姓名：________　　学号：________　　得分：________`, {
           center: true,
-          after: 80,
+          after: 40,
         }),
       )
     } else {
       children.push(infoBar())
     }
-    children.push(para('　', { after: 60 }))
     children.push(scoreTable(sections || [], meta.totalScore ?? 100))
-    children.push(para('　', { after: 40 }))
     children.push(
       para(
         [
-          run('注意事项：', { bold: true, size: 18 }),
+          run('注意事项：', { bold: true, size: 17 }),
           run('1.认真审题，书写工整；2.计算题注意验算；3.应用题写清解题过程与答句。', {
-            size: 18,
+            size: 17,
           }),
         ],
-        { after: 160 },
+        { after: 80, before: 40 },
       ),
     )
   } else {
     children.push(
-      para('（教师用）请对照学生卷批改。', { center: true, after: 160 }),
+      para('（教师用）请对照学生卷批改。', { center: true, after: 80 }),
     )
   }
 
@@ -592,10 +571,10 @@ export async function renderExamDocx(
 
   if (!withAnswers) {
     children.push(
-      para('···························· 试卷结束，请仔细检查 ····························', {
+      para('—— 试卷结束，请仔细检查 ——', {
         center: true,
-        before: 240,
-        after: 80,
+        before: 120,
+        after: 40,
       }),
     )
     // 可选：学生卷末附参考答案页
@@ -649,23 +628,10 @@ export async function renderExamDocx(
             },
           },
         },
+        // 页眉去掉，避免与卷头重复、挤占正文
         headers: {
           default: new Header({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                border: {
-                  bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 4 },
-                },
-                spacing: { after: 60 },
-                children: [
-                  run(
-                    `${meta.edition || ''} ${meta.subject || ''} ${meta.examType || '模拟卷'}`.trim(),
-                    { size: 14, color: '666666' },
-                  ),
-                ],
-              }),
-            ],
+            children: [new Paragraph({ children: [] })],
           }),
         },
         footers: {
@@ -674,18 +640,41 @@ export async function renderExamDocx(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 border: {
-                  top: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 4 },
+                  top: { style: BorderStyle.SINGLE, size: 4, color: '999999', space: 6 },
                 },
-                spacing: { before: 40 },
+                spacing: { before: 60 },
                 children: [
-                  run('第 ', { size: 14, color: '666666' }),
+                  // 页码字段用 Arial，宋体下部分 Word 会显示异常
+                  new TextRun({
+                    text: withAnswers ? '参考答案 · 第 ' : '第 ',
+                    size: 16,
+                    font: '宋体',
+                    color: '444444',
+                  }),
                   new TextRun({
                     children: [PageNumber.CURRENT],
-                    size: 14,
-                    font: '宋体',
-                    color: '666666',
+                    size: 16,
+                    font: 'Arial',
+                    color: '444444',
                   }),
-                  run(' 页', { size: 14, color: '666666' }),
+                  new TextRun({
+                    text: ' / ',
+                    size: 16,
+                    font: 'Arial',
+                    color: '444444',
+                  }),
+                  new TextRun({
+                    children: [PageNumber.TOTAL_PAGES],
+                    size: 16,
+                    font: 'Arial',
+                    color: '444444',
+                  }),
+                  new TextRun({
+                    text: ' 页',
+                    size: 16,
+                    font: '宋体',
+                    color: '444444',
+                  }),
                 ],
               }),
             ],

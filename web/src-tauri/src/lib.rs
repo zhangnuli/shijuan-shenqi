@@ -3,10 +3,12 @@ mod bank;
 mod config;
 mod contracts;
 mod curriculum_diff;
+mod ebook_site;
 mod generate;
 mod history;
 mod knowledge;
 mod lesson_plan;
+mod print_util;
 mod quality;
 mod review;
 mod scrape_dzkbw;
@@ -506,6 +508,62 @@ fn verify_math_paper(paper: Value) -> VerifyReport {
     verify_paper_math(&paper)
 }
 
+/// 将 HTML 转为无系统页眉页脚的 PDF（避免页脚出现 tauri.localhost），返回 PDF 绝对路径。
+#[tauri::command]
+async fn print_html_document(html: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = print_util::html_to_pdf(&html)?;
+        Ok(path.display().to_string())
+    })
+    .await
+    .map_err(|e| format!("打印任务失败: {e}"))?
+}
+
+/// 解析自有电子书阅读页链接（resId/bookId/contributeId）
+#[tauri::command]
+fn ebook_parse_url(url: String) -> Result<ebook_site::EbookLinkParts, String> {
+    ebook_site::parse_ebook_url(&url)
+}
+
+/// 拉取电子书目录
+#[tauri::command]
+async fn ebook_catalog(base_url: String, res_id: String) -> Result<ebook_site::EbookCatalog, String> {
+    tauri::async_runtime::spawn_blocking(move || ebook_site::fetch_catalog(&base_url, &res_id))
+        .await
+        .map_err(|e| format!("任务失败: {e}"))?
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EbookUnitPagesReq {
+    base_url: String,
+    res_id: String,
+    book_id: String,
+    contribute_id: String,
+    #[serde(default = "default_ebook_max_pages")]
+    max_pages: u32,
+}
+
+fn default_ebook_max_pages() -> u32 {
+    30
+}
+
+/// 拉取某单元页图列表（用于打印正文页）
+#[tauri::command]
+async fn ebook_unit_pages(req: EbookUnitPagesReq) -> Result<ebook_site::EbookUnitPages, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ebook_site::fetch_unit_pages(
+            &req.base_url,
+            &req.res_id,
+            &req.book_id,
+            &req.contribute_id,
+            req.max_pages,
+        )
+    })
+    .await
+    .map_err(|e| format!("任务失败: {e}"))?
+}
+
 fn build_template_paper(req: &GenerateRequest, pack: &knowledge::KnowledgePack) -> Value {
     let subject_cn = match req.subject.as_str() {
         "math" => "数学",
@@ -759,6 +817,10 @@ pub fn run() {
             generate_unit_lessons,
             generate_unit_lessons_template,
             verify_math_paper,
+            print_html_document,
+            ebook_parse_url,
+            ebook_catalog,
+            ebook_unit_pages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

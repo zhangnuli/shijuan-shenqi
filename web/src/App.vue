@@ -39,6 +39,7 @@ import { renderExamDocx } from './renderDocx'
 import { renderLessonDocx, buildLessonPrintHtml } from './renderLessonDocx'
 import { saveDocxFile } from './saveFile'
 import { printHtml } from './printExam'
+import { buildEbookPrintHtml, type EbookUnitPages } from './buildEbookPrintHtml'
 import type { BrandHeader } from './brand'
 import { aiSteps, aiTips, formatFriendlyError, useAiProgress } from './composables/useAiProgress'
 import { invokeCommand as invoke } from './services/tauriClient'
@@ -79,6 +80,31 @@ const diffLoading = ref(false)
 const onboardingVisible = ref(false)
 const onboardingStep = ref(0)
 const appInfo = ref<{ version?: string; appDataDir?: string; updateNote?: string; offlineNote?: string } | null>(null)
+
+/** 自有站电子书单元页图打印 */
+const ebookDialogVisible = ref(false)
+const ebookLoading = ref(false)
+const ebookFetchingPages = ref(false)
+const ebookForm = reactive({
+  url: 'https://www.100875.com.cn/show/eBookAndTeacher.html?resId=b613783f20cf42c689844433cce53c81&bookId=120170718181613001800&firstNum=a9f3f20e2e5749a3a94140ae57f883e0&contributeId=9220',
+  baseUrl: 'https://www.100875.com.cn',
+  resId: '',
+  bookId: '',
+  contributeId: '',
+  maxPages: 30,
+})
+const ebookCatalog = ref<{
+  bookName: string
+  subjectName: string
+  items: Array<{ bookId: string; cataName: string; deep: string }>
+} | null>(null)
+const ebookUnitPages = ref<EbookUnitPages | null>(null)
+
+const ebookUnitOptions = computed(() => {
+  const items = ebookCatalog.value?.items || []
+  const units = items.filter((x) => String(x.deep) === '5')
+  return units.length ? units : items
+})
 
 const ONBOARD_KEY = 'shijuan_onboarded_v1'
 
@@ -166,6 +192,10 @@ function onExamToolCommand(cmd: string) {
   }
   if (cmd === 'browseKb') {
     openCurriculumBrowser()
+    return
+  }
+  if (cmd === 'ebookPrint') {
+    openEbookPrintDialog()
     return
   }
   const map: Record<string, () => void> = {
@@ -2356,8 +2386,20 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
     .filter(Boolean)
     .join(' · ')
 
+  const sectionKind = (sec: { type?: string; title?: string }) =>
+    `${sec.type || ''}${sec.title || ''}`
+
   const sectionsHtml = (p.sections || [])
     .map((sec) => {
+      const kind = sectionKind(sec)
+      const isProblem = /解决|应用|problem|操作|实践/i.test(kind)
+      const isWriting = /习作|作文|writing|小练笔/i.test(kind)
+      const isReading = /阅读|reading/i.test(kind)
+      const isCalc = /计算|口算|竖式|脱式|calc|直接写出/i.test(kind)
+      const isChoice = /choice|选择/i.test(kind)
+      const isJudge = /judge|判断/i.test(kind)
+      const isFill = /fill|填空|拼音|积累|字词|默写/i.test(kind)
+
       const items = (sec.items || [])
         .map((item, idx) => {
           const stem = (item.stem || `${idx + 1}.`).replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -2368,20 +2410,22 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
           const ans = withAnswers
             ? `<div class="ans">答案：${String(item.answer ?? '略').replace(/</g, '&lt;')}</div>`
             : ''
-          // 应用题留白
-          const isProblem = /解决|应用|problem/i.test(`${sec.type}${sec.title}`)
-          const isWriting = /习作|作文|writing|小练笔/i.test(`${sec.type}${sec.title}`)
+          // 按题型控制留白：数学应用题/计算只留白，不画答题下划线
           let blank = ''
-          if (!withAnswers && isProblem) {
-            blank = `<div class="blank"><p><b>解：</b></p>${'<p class="lines"></p>'.repeat(9)}<p><b>答：</b></p>${'<p class="lines"></p>'.repeat(2)}</div>`
-          } else if (!withAnswers && isWriting) {
-            blank = `<div class="write-lines">${'<div class="wline"></div>'.repeat(18)}</div>`
-          } else if (!withAnswers) {
-            const isReading = /阅读|reading/i.test(`${sec.type}${sec.title}`)
-            const isCalc = /计算|口算|竖式|脱式|calc/i.test(`${sec.type}${sec.title}`)
-            if (isReading) blank = `<div class="write-lines">${'<div class="wline"></div>'.repeat(5)}</div>`
-            else if (isCalc) blank = `<div class="calc-space"></div>`
-            else blank = `<div class="write-lines short">${'<div class="wline"></div>'.repeat(2)}</div><div class="gap"></div>`
+          if (!withAnswers) {
+            if (isProblem) {
+              blank = `<div class="problem-space"></div>`
+            } else if (isWriting) {
+              blank = `<div class="write-lines">${'<div class="wline"></div>'.repeat(12)}</div>`
+            } else if (isReading) {
+              blank = `<div class="write-lines short">${'<div class="wline"></div>'.repeat(3)}</div>`
+            } else if (isCalc) {
+              blank = `<div class="calc-space"></div>`
+            } else if (isChoice || isJudge || isFill) {
+              blank = ''
+            } else {
+              blank = `<div class="item-gap"></div>`
+            }
           }
           return `<div class="item"><div class="stem">${stem.replace(/\n/g, '<br/>')}</div>${optsBlock}${blank}${ans}</div>`
         })
@@ -2391,79 +2435,90 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
     .join('')
 
   const title = (meta.title || '试卷').replace(/</g, '&lt;')
+  const footerLabel = withAnswers ? '参考答案' : '试卷'
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
 <title>${title}</title>
 <style>
-  @page { size: A4; margin: 14mm 12mm; }
+  /* 页脚页码：Chromium / WebView2 打印支持 @page 边距框 */
+  @page {
+    size: A4;
+    margin: 12mm 11mm 16mm 11mm;
+    @bottom-center {
+      content: "${footerLabel} · 第 " counter(page) " 页";
+      font-family: "宋体", SimSun, serif;
+      font-size: 9pt;
+      color: #333;
+    }
+  }
   * { box-sizing: border-box; }
   body {
     font-family: "宋体", SimSun, "Microsoft YaHei", serif;
-    font-size: 11pt;
+    font-size: 10.5pt;
     color: #000;
-    line-height: 1.65;
+    line-height: 1.45;
     margin: 0;
     padding: 0;
   }
   h1 {
     text-align: center;
     font-family: "黑体", SimHei, sans-serif;
-    font-size: 18pt;
+    font-size: 16pt;
     font-weight: bold;
-    margin: 0 0 8px;
+    margin: 0 0 4px;
   }
   .sub, .info {
     text-align: center;
-    font-size: 10.5pt;
-    margin: 0 0 8px;
+    font-size: 10pt;
+    margin: 0 0 4px;
   }
   .score {
     width: 100%;
     border-collapse: collapse;
-    margin: 10px 0 14px;
-    font-size: 10pt;
+    margin: 6px 0 8px;
+    font-size: 9.5pt;
   }
   .score th, .score td {
     border: 1px solid #000;
-    padding: 4px 6px;
+    padding: 3px 4px;
     text-align: center;
   }
   .note {
-    font-size: 9.5pt;
-    margin-bottom: 14px;
+    font-size: 9pt;
+    margin: 0 0 8px;
+    line-height: 1.4;
   }
-  .sec { margin-bottom: 14px; page-break-inside: avoid; }
+  /* 大题允许跨页，避免半页空白 */
+  .sec { margin-bottom: 8px; page-break-inside: auto; }
   .sec h2 {
     font-family: "黑体", SimHei, sans-serif;
-    font-size: 12pt;
-    margin: 12px 0 8px;
+    font-size: 11pt;
+    margin: 8px 0 4px;
     font-weight: bold;
   }
-  .item { margin-bottom: 10px; page-break-inside: avoid; }
+  .item { margin-bottom: 5px; page-break-inside: avoid; }
   .stem { white-space: pre-wrap; }
   .opts {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4px 16px;
-    padding-left: 1.5em;
-    margin-top: 4px;
+    gap: 2px 12px;
+    padding-left: 1.2em;
+    margin-top: 2px;
   }
-  .gap { height: 20px; }
-  .blank { margin: 6px 0 14px; }
-  .blank p { margin: 4px 0; }
-  .blank .lines { height: 28px; border-bottom: 1px solid #999; margin: 0; }
-  .write-lines { margin-top: 8px; margin-bottom: 12px; }
-  .write-lines.short .wline { height: 26px; }
-  .wline { height: 32px; border-bottom: 1px solid #333; margin-bottom: 2px; }
-  .calc-space { height: 72px; margin: 6px 0 12px; }
-  .ans { color: #000; margin-top: 4px; font-size: 10.5pt; }
-  .school { text-align:center; font-family:"黑体",SimHei,sans-serif; font-size:12pt; font-weight:bold; margin:0 0 4px; }
+  .item-gap { height: 4px; }
+  .problem-space { height: 96px; margin: 2px 0 6px; }
+  .write-lines { margin: 3px 0 6px; }
+  .write-lines.short .wline { height: 20px; }
+  .wline { height: 22px; border-bottom: 1px solid #333; margin-bottom: 1px; }
+  .calc-space { height: 36px; margin: 2px 0 4px; }
+  .ans { color: #000; margin-top: 2px; font-size: 10pt; }
+  .school { text-align:center; font-family:"黑体",SimHei,sans-serif; font-size:11pt; font-weight:bold; margin:0 0 2px; }
   .end {
     text-align: center;
-    margin-top: 24px;
-    font-size: 10pt;
+    margin-top: 10px;
+    font-size: 9pt;
     color: #333;
   }
   @media print {
@@ -2516,11 +2571,103 @@ function openPrintPreview(withAnswers = false) {
 
 async function confirmPrint() {
   try {
-    await printHtml(printPreviewHtml.value)
+    const result = await printHtml(printPreviewHtml.value)
     printPreviewVisible.value = false
-    ElMessage.success(printPreviewIsAnswer.value ? '已打开打印（参考答案）' : '已打开打印（学生卷）')
+    if (result.mode === 'pdf') {
+      ElMessage.success(
+        printPreviewIsAnswer.value
+          ? '已生成参考答案 PDF（无 tauri.localhost 页脚），请在打开的 PDF 中打印'
+          : '已生成试卷 PDF（无 tauri.localhost 页脚），请在打开的 PDF 中打印',
+      )
+    } else {
+      ElMessage.warning(
+        '已打开系统打印。若页脚出现 tauri.localhost，请在打印对话框取消勾选「页眉和页脚」',
+      )
+    }
   } catch (e) {
     ElMessage.error(`打印失败：${e}`)
+  }
+}
+
+function openEbookPrintDialog() {
+  ebookDialogVisible.value = true
+  ebookUnitPages.value = null
+}
+
+async function parseEbookUrl() {
+  try {
+    const parts = await invoke<{
+      baseUrl: string
+      resId: string
+      bookId: string
+      contributeId: string
+      firstNum: string
+    }>('ebook_parse_url', { url: ebookForm.url })
+    ebookForm.baseUrl = parts.baseUrl || ebookForm.baseUrl
+    ebookForm.resId = parts.resId
+    ebookForm.bookId = parts.bookId
+    ebookForm.contributeId = parts.contributeId
+    ElMessage.success('链接已解析')
+    await loadEbookCatalog()
+  } catch (e) {
+    ElMessage.error(`解析链接失败：${e}`)
+  }
+}
+
+async function loadEbookCatalog() {
+  if (!ebookForm.resId.trim()) {
+    ElMessage.warning('请先填写 resId 或粘贴完整阅读页链接并解析')
+    return
+  }
+  ebookLoading.value = true
+  ebookUnitPages.value = null
+  try {
+    const cat = await invoke<{
+      bookName: string
+      subjectName: string
+      items: Array<{ bookId: string; cataName: string; deep: string }>
+    }>('ebook_catalog', {
+      baseUrl: ebookForm.baseUrl || 'https://www.100875.com.cn',
+      resId: ebookForm.resId.trim(),
+    })
+    ebookCatalog.value = cat
+    if (!ebookForm.bookId && cat.items?.length) {
+      const units = cat.items.filter((x) => String(x.deep) === '5')
+      ebookForm.bookId = (units[0] || cat.items[0]).bookId
+    }
+    ElMessage.success(`已加载《${cat.bookName || '电子书'}》目录（${cat.items?.length || 0} 项）`)
+  } catch (e) {
+    ElMessage.error(`加载目录失败：${e}`)
+  } finally {
+    ebookLoading.value = false
+  }
+}
+
+async function fetchEbookUnitAndPreview() {
+  if (!ebookForm.resId || !ebookForm.bookId || !ebookForm.contributeId) {
+    ElMessage.warning('需要 resId、bookId、contributeId（可从阅读页链接解析）')
+    return
+  }
+  ebookFetchingPages.value = true
+  try {
+    const pages = await invoke<EbookUnitPages>('ebook_unit_pages', {
+      baseUrl: ebookForm.baseUrl || 'https://www.100875.com.cn',
+      resId: ebookForm.resId.trim(),
+      bookId: ebookForm.bookId.trim(),
+      contributeId: ebookForm.contributeId.trim(),
+      maxPages: ebookForm.maxPages || 30,
+    })
+    ebookUnitPages.value = pages
+    printPreviewIsAnswer.value = false
+    printPreviewHtml.value = buildEbookPrintHtml(pages)
+    printPreviewVisible.value = true
+    ElMessage.success(
+      `已取「${pages.unitName}」第 ${pages.startPage}–${pages.endPage} 页，共 ${pages.pages?.length || 0} 张，可确认打印`,
+    )
+  } catch (e) {
+    ElMessage.error(`拉取单元页图失败：${e}`)
+  } finally {
+    ebookFetchingPages.value = false
   }
 }
 
@@ -2712,6 +2859,7 @@ onMounted(loadAll)
       <div class="topbar-actions">
         <el-button text @click="openHistory">历史记录</el-button>
         <el-button text type="primary" @click="openCurriculumBrowser">查看课标</el-button>
+        <el-button text type="primary" :icon="Printer" @click="openEbookPrintDialog">打印电子书</el-button>
         <el-button text :icon="Link" @click="openSmartedu('classroom')">同步课堂</el-button>
         <el-button text :icon="Link" @click="openCatalogRef">教材目录</el-button>
         <el-button text @click="exportRuntimeLog">导出日志</el-button>
@@ -2996,6 +3144,7 @@ onMounted(loadAll)
                       <el-dropdown-item command="review" :disabled="!paper" divided>讲评稿</el-dropdown-item>
                       <el-dropdown-item command="redrill" :disabled="!paper || redrillLoading">错题再练卷</el-dropdown-item>
                       <el-dropdown-item command="browseKb" divided>查看课标</el-dropdown-item>
+                      <el-dropdown-item command="ebookPrint">打印电子书单元</el-dropdown-item>
                       <el-dropdown-item command="prefs">设为默认参数</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
@@ -3633,6 +3782,86 @@ onMounted(loadAll)
       <template #footer>
         <el-button @click="settingsVisible = false">取消</el-button>
         <el-button type="primary" @click="saveSettings">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 自有站电子书单元页图打印 -->
+    <el-dialog
+      v-model="ebookDialogVisible"
+      title="打印电子书单元（自有站页图）"
+      width="720px"
+      top="6vh"
+      class="ebook-print-dlg"
+    >
+      <p class="field-hint" style="margin-top: 0">
+        对接自有资源站阅读页：根据链接中的 resId / bookId / contributeId 拉取目录与分页 JPG，再生成打印稿。
+        默认示例为 100875 数学三年级上册。
+      </p>
+      <div class="form-grid" style="gap: 10px">
+        <div class="field" style="grid-column: 1 / -1">
+          <label>阅读页链接</label>
+          <el-input
+            v-model="ebookForm.url"
+            type="textarea"
+            :rows="2"
+            placeholder="eBookAndTeacher.html?resId=...&bookId=...&contributeId=..."
+          />
+          <div class="btn-row" style="margin-top: 8px">
+            <el-button type="primary" plain @click="parseEbookUrl">解析链接</el-button>
+            <el-button :loading="ebookLoading" @click="loadEbookCatalog">加载目录</el-button>
+          </div>
+        </div>
+        <div class="field">
+          <label>站点 Base</label>
+          <el-input v-model="ebookForm.baseUrl" placeholder="https://www.100875.com.cn" />
+        </div>
+        <div class="field">
+          <label>resId</label>
+          <el-input v-model="ebookForm.resId" />
+        </div>
+        <div class="field">
+          <label>contributeId</label>
+          <el-input v-model="ebookForm.contributeId" />
+        </div>
+        <div class="field">
+          <label>最多页数（防过长）</label>
+          <el-input-number v-model="ebookForm.maxPages" :min="1" :max="80" />
+        </div>
+        <div class="field" style="grid-column: 1 / -1" v-if="ebookCatalog">
+          <label>
+            选择单元
+            <span class="field-hint" style="margin-left: 8px">
+              {{ ebookCatalog.subjectName }} · {{ ebookCatalog.bookName }}
+            </span>
+          </label>
+          <el-select v-model="ebookForm.bookId" filterable style="width: 100%" placeholder="单元">
+            <el-option
+              v-for="u in ebookUnitOptions"
+              :key="u.bookId"
+              :label="u.cataName"
+              :value="u.bookId"
+            />
+          </el-select>
+        </div>
+        <div class="field" style="grid-column: 1 / -1" v-if="ebookUnitPages">
+          <el-alert
+            type="success"
+            :closable="false"
+            :title="`已缓存：${ebookUnitPages.unitName} · 第 ${ebookUnitPages.startPage}–${ebookUnitPages.endPage} 页 · ${ebookUnitPages.pages?.length || 0} 张`"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="ebookDialogVisible = false">关闭</el-button>
+        <el-button
+          type="primary"
+          :icon="Printer"
+          :loading="ebookFetchingPages"
+          :disabled="!ebookForm.resId || !ebookForm.bookId || !ebookForm.contributeId"
+          @click="fetchEbookUnitAndPreview"
+        >
+          拉取页图并预览打印
+        </el-button>
       </template>
     </el-dialog>
 
