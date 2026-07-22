@@ -322,11 +322,10 @@ pub fn inspect_paper(paper: &Value) -> QualityReport {
                     "error",
                     "math_mismatch",
                     format!(
-                        "第 {}-{} 题验算不一致：{}（计算得 {}）",
+                        "第 {}-{} 题验算不一致：{}",
                         it.section_index + 1,
                         it.item_index + 1,
-                        it.message,
-                        it.computed.clone().unwrap_or_default()
+                        it.message
                     ),
                     Some(it.section_index),
                     Some(it.item_index),

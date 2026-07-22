@@ -3,6 +3,7 @@ use crate::config::AppConfig;
 use crate::contracts::validate_exam_paper;
 use crate::knowledge::KnowledgePack;
 use crate::quality::inspect_paper;
+use crate::verify::repair_math_answers;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -413,6 +414,8 @@ pub fn generate_with_ai(
     let value: Value =
         serde_json::from_str(&json_str).map_err(|e| format!("试卷 JSON 无效: {e}\n{json_str}"))?;
     validate_exam_paper(&value)?;
+    // 口算/脱式等可验算题：答案算错时用程序结果自动修正，避免「3/8=0.375」类误杀整卷
+    let (value, _math_fixed) = repair_math_answers(&value);
     let quality = inspect_paper(&value);
     if quality.error_count > 0 {
         let details = quality
