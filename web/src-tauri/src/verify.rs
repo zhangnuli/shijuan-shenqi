@@ -263,6 +263,20 @@ fn eval_expr(expr: &str) -> Result<f64, String> {
     Ok(v)
 }
 
+/// 供本地题库从公开素材中筛出可程序验算的纯算式。
+pub(crate) fn evaluate_simple_expression(expr: &str) -> Result<String, String> {
+    let normalized = normalize_math_text(expr).trim_end_matches('=').to_string();
+    if normalized.is_empty()
+        || !normalized.chars().any(|c| "+-*/".contains(c))
+        || normalized
+            .chars()
+            .any(|c| !(c.is_ascii_digit() || ".+-*/()".contains(c)))
+    {
+        return Err("不是受支持的纯算式".into());
+    }
+    eval_expr(&normalized).map(format_num)
+}
+
 fn nearly_eq(a: f64, b: f64) -> bool {
     if a.is_nan() || b.is_nan() {
         return false;

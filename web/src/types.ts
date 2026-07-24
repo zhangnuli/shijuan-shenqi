@@ -110,10 +110,45 @@ export interface GenerateRequest {
   /** 掺入校本收藏题 */
   useSchoolBank?: boolean
   schoolBankSnippets?: string[]
+  /** 同步的公开网页题库素材摘要，由后端按范围注入 */
+  publicBankSnippets?: string[]
   /** 模板市集 id */
   templateId?: string | null
   structureOverride?: string | null
+  /** strict 严格模板 | adaptive 智能结构 | free 自由组卷 */
+  structureMode?: 'strict' | 'adaptive' | 'free'
   templateHints?: string[]
+}
+
+export interface AppSjResource {
+  id: string
+  title: string
+  url: string
+  subject: string
+  grade: number
+  semester: string
+  edition: string
+  examType: string
+  unitName?: string
+  content: string
+  downloadUrl?: string
+  downloadCode?: string
+  sourceName: string
+  sourceHome: string
+  syncedAt: number
+}
+
+export interface AppSjSyncReport {
+  ok: boolean
+  message: string
+  discovered: number
+  fetched: number
+  added: number
+  updated: number
+  skipped: number
+  failed: string[]
+  total: number
+  dataPath: string
 }
 
 export interface TemplateSectionSpec {

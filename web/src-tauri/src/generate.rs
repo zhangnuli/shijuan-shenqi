@@ -57,15 +57,34 @@ pub struct GenerateRequest {
     /// 校本收藏题摘要（前端/命令层注入，供 AI 参考改写）
     #[serde(default)]
     pub school_bank_snippets: Vec<String>,
+    /// 公开网页题库素材摘要（命令层按当前范围注入）
+    #[serde(default)]
+    pub public_bank_snippets: Vec<String>,
     /// 模板市集：选用的模板 id
     #[serde(default)]
     pub template_id: Option<String>,
     /// 模板市集：强制结构行（覆盖默认建议题型结构）
     #[serde(default)]
     pub structure_override: Option<String>,
+    /// 结构约束：strict（严格模板）| adaptive（智能结构）| free（自由组卷）
+    #[serde(default = "default_structure_mode")]
+    pub structure_mode: String,
     /// 模板附加命题提示
     #[serde(default)]
     pub template_hints: Vec<String>,
+}
+
+fn default_structure_mode() -> String {
+    "adaptive".into()
+}
+
+fn normalized_structure_mode(mode: &str) -> &'static str {
+    match mode.trim().to_ascii_lowercase().as_str() {
+        "strict" => "strict",
+        "free" => "free",
+        "adaptive" => "adaptive",
+        _ => "adaptive",
+    }
 }
 
 pub fn exam_type_label(t: &str) -> &'static str {
@@ -318,6 +337,20 @@ JSON 结构必须如下：
         String::new()
     };
 
+    let public_bank_block = if req.mix_bank && !req.public_bank_snippets.is_empty() {
+        format!(
+            "\n公开网页题库素材（仅参考考点与题型；不要照抄来源原文，答案必须自行推导并校验）：\n{}",
+            req.public_bank_snippets
+                .iter()
+                .enumerate()
+                .map(|(index, snippet)| format!("{}. {}", index + 1, snippet))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    } else {
+        String::new()
+    };
+
     let special_hint = match req.exam_type.as_str() {
         "oral" => "本卷为口算/字词专项：题量宜多、书写负担适中，避免长阅读与大作文。",
         "lesson" => "本卷为一课时课堂练习：控制在一节课可完成。",
@@ -326,14 +359,38 @@ JSON 结构必须如下：
         _ => "",
     };
 
-    let template_line = if req.template_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false) {
-        format!(
-            "【必须严格按下列题型结构出卷，大题顺序与分值不可擅自合并或删减】\n模板：{}\n结构：{}",
-            req.template_id.as_deref().unwrap_or(""),
-            structure
-        )
-    } else {
-        format!("建议题型结构：{structure}")
+    let structure_mode = normalized_structure_mode(&req.structure_mode);
+    let template_line = match structure_mode {
+        "strict" => {
+            if req.template_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false) {
+                format!(
+                    "【严格模板模式】必须按下列题型结构出卷，大题顺序、题量与分值不可擅自合并或删减。\n模板：{}\n结构：{}",
+                    req.template_id.as_deref().unwrap_or(""),
+                    structure
+                )
+            } else {
+                format!("【严格结构模式】必须按下列建议结构出卷，大题顺序、题量与分值不可擅自调整：{structure}")
+            }
+        }
+        "free" => format!(
+            "【自由组卷模式】以下结构仅作参考，不要求照抄。请根据知识点、年级、时长和难度自行设计最合适的大题组合；可以新增、合并、拆分或调整题型，但必须保证总分为{}分、时长约{}分钟、知识覆盖完整且便于打印。参考结构：{}",
+            req.total_score, req.duration_min, structure
+        ),
+        _ => {
+            if req.template_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false) {
+                format!(
+                    "【智能结构模式】以下模板是组卷参考，不是硬性限制。请优先保留核心考查意图，但可根据知识点和年级适当调整大题顺序、题量、分值，并允许合并或拆分题型；总分必须为{}分。\n模板：{}\n参考结构：{}",
+                    req.total_score,
+                    req.template_id.as_deref().unwrap_or(""),
+                    structure
+                )
+            } else {
+                format!(
+                    "【智能结构模式】以下是建议结构。可根据知识点、难度和时长适当调整题型、顺序、题量与分值，但总分必须为{}分。建议结构：{}",
+                    req.total_score, structure
+                )
+            }
+        }
     };
 
     let extra_tpl_hints = if req.template_hints.is_empty() {
@@ -357,6 +414,7 @@ JSON 结构必须如下：
 {hints}
 {skeleton_block}
 {school_block}
+{public_bank_block}
 
 请直接输出 JSON。"#,
         edition_cn = edition_cn,
@@ -374,6 +432,7 @@ JSON 结构必须如下：
         hints = pack.exam_hints.join("\n- "),
         skeleton_block = skeleton_block,
         school_block = school_block,
+        public_bank_block = public_bank_block,
     );
 
     (system, user)
@@ -604,4 +663,77 @@ pub fn generate_parallel_set(cfg: &AppConfig, paper: &Value) -> Result<Value, St
         },
         "papers": [paper_a, paper_b, paper_c]
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::knowledge::{KnowledgePack, SourceInfo, UnitInfo};
+
+    fn request(mode: &str) -> GenerateRequest {
+        GenerateRequest {
+            subject: "math".into(),
+            edition: "beishida".into(),
+            grade: 3,
+            semester: "shang".into(),
+            exam_type: "unit".into(),
+            unit_id: Some("u1".into()),
+            difficulty: "标准".into(),
+            total_score: 100,
+            duration_min: 40,
+            knowledge_path: String::new(),
+            selected_lessons: vec![],
+            difficulty_ratio: DifficultyRatio::default(),
+            mix_bank: false,
+            use_school_bank: false,
+            school_bank_snippets: vec![],
+            public_bank_snippets: vec![],
+            template_id: Some("math-unit-classic".into()),
+            structure_override: Some("一、填空（20分） 二、计算（30分）".into()),
+            structure_mode: mode.into(),
+            template_hints: vec![],
+        }
+    }
+
+    fn pack() -> KnowledgePack {
+        KnowledgePack {
+            subject: "math".into(),
+            edition: "beishida".into(),
+            grade: 3,
+            semester: "shang".into(),
+            title: "测试教材".into(),
+            source: SourceInfo::default(),
+            units: vec![UnitInfo {
+                id: "u1".into(),
+                name: "第一单元".into(),
+                lessons: vec!["认识数".into()],
+                points: vec!["数的认识".into()],
+            }],
+            exam_hints: vec![],
+        }
+    }
+
+    #[test]
+    fn prompt_has_three_structure_modes() {
+        let p = pack();
+        let (_, strict_user) = build_prompt(&request("strict"), &p);
+        assert!(strict_user.contains("严格模板模式"));
+        assert!(strict_user.contains("不可擅自合并或删减"));
+
+        let (_, adaptive_user) = build_prompt(&request("adaptive"), &p);
+        assert!(adaptive_user.contains("智能结构模式"));
+        assert!(adaptive_user.contains("不是硬性限制"));
+
+        let (_, free_user) = build_prompt(&request("free"), &p);
+        assert!(free_user.contains("自由组卷模式"));
+        assert!(free_user.contains("自行设计最合适的大题组合"));
+    }
+
+    #[test]
+    fn missing_structure_mode_defaults_to_adaptive() {
+        let mut raw = serde_json::to_value(request("adaptive")).unwrap();
+        raw.as_object_mut().unwrap().remove("structureMode");
+        let parsed: GenerateRequest = serde_json::from_value(raw).unwrap();
+        assert_eq!(parsed.structure_mode, "adaptive");
+    }
 }

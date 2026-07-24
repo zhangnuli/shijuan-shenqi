@@ -18,6 +18,8 @@ import {
 } from '@element-plus/icons-vue'
 import type {
   AppConfig,
+  AppSjResource,
+  AppSjSyncReport,
   CatalogItem,
   ExamPaper,
   ExamItem,
@@ -48,6 +50,9 @@ import AiProgressDialog from './components/AiProgressDialog.vue'
 
 const loading = ref(false)
 const updatingCurriculum = ref(false)
+const syncingQuestionBank = ref(false)
+const publicBankResources = ref<AppSjResource[]>([])
+const publicBankLastReport = ref<AppSjSyncReport | null>(null)
 const catalog = ref<CatalogItem[]>([])
 const presets = ref<ProviderPreset[]>([])
 const paper = ref<ExamPaper | null>(null)
@@ -276,6 +281,8 @@ const form = reactive({
   useSchoolBank: false,
   /** 当前选用的模板市集 id */
   templateId: '' as string,
+  /** 结构约束：默认允许 AI 适度调整模板 */
+  structureMode: 'adaptive' as 'strict' | 'adaptive' | 'free',
 })
 
 const config = reactive<AppConfig>({
@@ -312,6 +319,20 @@ watch(
 const historyFilter = ref<'all' | 'exam' | 'lesson' | 'other'>('all')
 const historyKeyword = ref('')
 const hasApiKey = computed(() => Boolean(config.apiKey.trim() || config.apiKeyConfigured))
+const isLocalAi = computed(() => {
+  const base = config.apiBase.trim().toLowerCase()
+  return base.includes('127.0.0.1') || base.includes('localhost')
+})
+const aiReady = computed(() => hasApiKey.value || isLocalAi.value)
+const aiReadyHint = computed(() =>
+  isLocalAi.value && !hasApiKey.value ? '本地模型已就绪' : 'AI 接口已配置',
+)
+const structureModeLabel = computed(() => {
+  if (!aiReady.value) return form.subject === 'math' ? '本地题库组卷' : '本地结构卷'
+  if (form.structureMode === 'strict') return '按严格模板组卷'
+  if (form.structureMode === 'free') return '自由智能组卷'
+  return form.templateId ? '按模板智能组卷' : '智能组卷'
+})
 
 /** 统一历史类型：exam | lesson | other */
 function historyKindOf(h: HistoryEntry): 'exam' | 'lesson' | 'other' {
@@ -922,17 +943,19 @@ async function saveToHistory(p: ExamPaper) {
 
 async function loadAll() {
   try {
-    const [c, p, cfg, dir, info] = await Promise.all([
+    const [c, p, cfg, dir, info, bankResources] = await Promise.all([
       invoke<CatalogItem[]>('get_catalog'),
       invoke<ProviderPreset[]>('get_provider_presets'),
       invoke<AppConfig>('get_config'),
       invoke<string>('get_curriculum_dir').catch(() => ''),
       invoke<{ version?: string; appDataDir?: string }>('get_app_info').catch(() => null),
+      invoke<AppSjResource[]>('list_appsj_resources').catch(() => []),
     ])
     catalog.value = c
     presets.value = p
     curriculumDir.value = dir
     if (info) appInfo.value = info
+    publicBankResources.value = bankResources
     Object.assign(config, {
       exportAttachAnswers: true,
       exportMode: 'with_answers',
@@ -964,6 +987,45 @@ async function loadAll() {
     }
   } catch (e) {
     ElMessage.error(`初始化失败：${e}`)
+  }
+}
+
+async function onSyncQuestionBank() {
+  const scope = `${form.grade}年级${form.semester === 'shang' ? '上册' : '下册'}${subjectLabel.value}${examTypeLabel.value}`
+  try {
+    await ElMessageBox.confirm(
+      `将从 appsj.szxuexiao.com 读取“${scope}”的公开网页内容，缓存试卷结构、考点和典型题素材。不会自动下载百度网盘文件；无明确答案的内容只作为命题素材。`,
+      '同步公开题库',
+      { type: 'info', confirmButtonText: '开始同步', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  syncingQuestionBank.value = true
+  try {
+    const report = await invoke<AppSjSyncReport>('sync_appsj_resources', {
+      request: {
+        subject: form.subject,
+        grade: form.grade,
+        semester: form.semester,
+        examType: form.examType,
+        unitName: needsUnit.value ? selectedUnit.value?.name || '' : '',
+        maxPages: 3,
+        maxItems: 20,
+      },
+    })
+    publicBankLastReport.value = report
+    publicBankResources.value = await invoke<AppSjResource[]>('list_appsj_resources')
+    if (report.ok) {
+      ElMessage.success(report.message)
+    } else {
+      ElMessage.warning(report.message)
+    }
+    if (report.failed?.length) console.warn('公开题库同步部分失败', report.failed)
+  } catch (e) {
+    ElMessage.error(`公开题库同步失败：${e}`)
+  } finally {
+    syncingQuestionBank.value = false
   }
 }
 
@@ -1036,8 +1098,10 @@ function buildReq(): GenerateRequest {
     mixBank: form.mixBank,
     useSchoolBank: form.useSchoolBank,
     schoolBankSnippets: [],
+    publicBankSnippets: [],
     templateId: form.templateId || null,
     structureOverride: null,
+    structureMode: form.structureMode,
     templateHints: [],
   }
 }
@@ -1339,7 +1403,7 @@ async function onGenerateRedrill() {
   }
   redrillLoading.value = true
   try {
-    if (hasApiKey.value) await invoke('set_config', { cfg: { ...config } })
+    if (aiReady.value) await invoke('set_config', { cfg: { ...config } })
     const exam = await invoke<ExamPaper>('generate_redrill', {
       req: {
         paper: paper.value,
@@ -1445,8 +1509,8 @@ async function makeParallelABC() {
     ElMessage.warning('请先完成组卷')
     return
   }
-  if (!hasApiKey.value) {
-    ElMessage.warning('请先配置 API 密钥（需生成 B/C 卷）')
+  if (!aiReady.value) {
+    ElMessage.warning('请先配置 AI 接口（云端 API Key 或本地模型）')
     settingsVisible.value = true
     return
   }
@@ -1653,7 +1717,7 @@ async function onGenerateReview() {
   }
   reviewLoading.value = true
   try {
-    if (reviewUseAi.value && hasApiKey.value) {
+    if (reviewUseAi.value && aiReady.value) {
       await invoke('set_config', { cfg: { ...config } })
     }
     const outline = await invoke<ReviewOutline>('generate_review', {
@@ -1663,7 +1727,7 @@ async function onGenerateReview() {
         knowledgePoints,
         subject: paper.value.meta?.subject || subjectLabel.value,
         grade: paper.value.meta?.grade || form.grade,
-        useAi: reviewUseAi.value && hasApiKey.value,
+        useAi: reviewUseAi.value && aiReady.value,
       },
     })
     reviewOutline.value = outline
@@ -1749,9 +1813,11 @@ function verifyItemOf(si: number, ii: number) {
 }
 
 async function onAiGenerate() {
-  if (!hasApiKey.value) {
-    ElMessage.warning('请先配置 API 密钥')
-    settingsVisible.value = true
+  if (!aiReady.value) {
+    if (form.subject !== 'math') {
+      ElMessage.warning('当前无 AI 模式仅能保证数学题答案可验算；语文和英语将生成结构卷')
+    }
+    await onTemplateGenerate()
     return
   }
   if (!currentPack.value) {
@@ -1785,7 +1851,11 @@ async function onTemplateGenerate() {
     const result = await invoke<ExamPaper>('generate_template_paper', { req })
     paper.value = result
     await saveToHistory(result)
-    ElMessage.success('已生成结构模板（题目为占位，正式使用请用智能组卷）')
+    if (form.subject === 'math') {
+      ElMessage.success('已用本地可验算题库生成完整数学卷')
+    } else {
+      ElMessage.success('已生成结构卷；语文和英语完整命题仍需 AI 或带答案的结构化题库')
+    }
   } catch (e) {
     ElMessage.error(`模板生成失败：${e}`)
   } finally {
@@ -1953,8 +2023,8 @@ function buildLessonReq() {
 }
 
 async function onGenerateLesson() {
-  if (!hasApiKey.value) {
-    ElMessage.warning('请先配置 API 密钥')
+  if (!aiReady.value) {
+    ElMessage.warning('请先配置 AI 接口（云端 API Key 或本地模型）')
     settingsVisible.value = true
     return
   }
@@ -2018,8 +2088,8 @@ async function onLessonTemplate() {
  * 同一单元：先写教案，再出配套单元练习卷
  */
 async function onGenerateLinked() {
-  if (!hasApiKey.value) {
-    ElMessage.warning('请先配置 API 密钥')
+  if (!aiReady.value) {
+    ElMessage.warning('请先配置 AI 接口（云端 API Key 或本地模型）')
     settingsVisible.value = true
     return
   }
@@ -2150,8 +2220,8 @@ async function exportLinkedBoth() {
 
 /** 单元全课时教案（AI） */
 async function onGenerateUnitAllLessons(useAi: boolean) {
-  if (useAi && !hasApiKey.value) {
-    ElMessage.warning('请先配置 API 密钥')
+  if (useAi && !aiReady.value) {
+    ElMessage.warning('请先配置 AI 接口（云端 API Key 或本地模型）')
     settingsVisible.value = true
     return
   }
@@ -2704,9 +2774,9 @@ async function printExam(withAnswers = false) {
 }
 
 async function regenerateItem(sectionIndex: number, itemIndex: number) {
-  if (!paper.value || !hasApiKey.value) {
-    ElMessage.warning(!hasApiKey.value ? '请先配置 API 密钥' : '请先完成组卷')
-    if (!hasApiKey.value) settingsVisible.value = true
+  if (!paper.value || !aiReady.value) {
+    ElMessage.warning(!aiReady.value ? '请先配置 AI 接口（云端 API Key 或本地模型）' : '请先完成组卷')
+    if (!aiReady.value) settingsVisible.value = true
     return
   }
   const key = `${sectionIndex}-${itemIndex}`
@@ -2745,8 +2815,8 @@ async function makePaperB() {
     ElMessage.warning('请先完成组卷')
     return
   }
-  if (!hasApiKey.value) {
-    ElMessage.warning('请先配置 API 密钥')
+  if (!aiReady.value) {
+    ElMessage.warning('请先配置 AI 接口（云端 API Key 或本地模型）')
     settingsVisible.value = true
     return
   }
@@ -3025,6 +3095,18 @@ onMounted(loadAll)
 
                 <el-collapse v-model="advancedOpen" class="advanced-collapse">
                   <el-collapse-item title="高级选项" name="adv">
+                    <el-form-item label="结构模式">
+                      <el-select v-model="form.structureMode" class="w-full">
+                        <el-option label="智能结构（推荐）" value="adaptive" />
+                        <el-option label="严格模板" value="strict" />
+                        <el-option label="自由组卷" value="free" />
+                      </el-select>
+                      <div class="field-hint">
+                        <template v-if="form.structureMode === 'strict'">严格遵循模板的大题顺序、题量与分值。</template>
+                        <template v-else-if="form.structureMode === 'free'">只锁定范围、总分和时长，允许 AI 自行设计卷面结构。</template>
+                        <template v-else>模板作为参考，AI 可按知识点适度调整题型和分值。</template>
+                      </div>
+                    </el-form-item>
                     <el-form-item label="满分">
                       <el-input-number v-model="form.totalScore" :min="30" :max="150" class="w-full" controls-position="right" />
                     </el-form-item>
@@ -3048,6 +3130,25 @@ onMounted(loadAll)
                     <el-form-item label="组卷策略">
                       <el-checkbox v-model="form.mixBank">题库混组</el-checkbox>
                       <el-checkbox v-model="form.useSchoolBank">校本收藏参与</el-checkbox>
+                      <div class="bank-sync-row">
+                        <el-button
+                          size="small"
+                          plain
+                          type="primary"
+                          :icon="Refresh"
+                          :loading="syncingQuestionBank"
+                          :disabled="loading || updatingCurriculum"
+                          @click="onSyncQuestionBank"
+                        >
+                          同步公开题库
+                        </el-button>
+                        <span class="field-hint">
+                          本机已缓存 {{ publicBankResources.length }} 份素材
+                        </span>
+                      </div>
+                      <div v-if="publicBankLastReport" class="field-hint">
+                        最近同步：{{ publicBankLastReport.message }}
+                      </div>
                     </el-form-item>
                   </el-collapse-item>
                 </el-collapse>
@@ -3119,7 +3220,7 @@ onMounted(loadAll)
                 :disabled="updatingCurriculum || linking"
                 @click="onAiGenerate"
               >
-                {{ loading && !linking ? '组卷中…' : form.templateId ? '按模板智能组卷' : '智能组卷' }}
+                {{ loading && !linking ? '组卷中…' : structureModeLabel }}
               </el-button>
               <el-button
                 class="btn-secondary-block"
@@ -3747,6 +3848,9 @@ onMounted(loadAll)
           >
             清除已保存密钥
           </el-button>
+          <div class="field-tip">
+            {{ aiReadyHint }}。选择本地 Ollama 时可不填 API Key；云端服务仍需填写密钥。
+          </div>
         </el-form-item>
         <el-form-item label="模型">
           <el-select

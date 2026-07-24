@@ -1,4 +1,5 @@
 mod ai;
+mod appsj;
 mod bank;
 mod config;
 mod contracts;
@@ -23,6 +24,7 @@ use bank::{
     import_paper_and_items, list_bank_papers, list_favorites, pick_favorite_snippets,
     AddFavoriteRequest, BankPaper, FavoriteItem,
 };
+use appsj::{AppSjResource, AppSjSyncReport, AppSjSyncRequest};
 use config::{
     clear_api_key as remove_config_api_key, load_config, load_config_for_frontend,
     provider_presets, save_config, AppConfig, ProviderPreset,
@@ -84,6 +86,22 @@ async fn update_curriculum(app: AppHandle) -> Result<UpdateCurriculumResult, Str
     tauri::async_runtime::spawn_blocking(move || update_curriculum_from_dzkbw(&app))
         .await
         .map_err(|e| format!("任务失败: {e}"))?
+}
+
+/// 同步小学试卷网公开 HTML 命题素材，不自动下载第三方网盘文件。
+#[tauri::command]
+async fn sync_appsj_resources(
+    app: AppHandle,
+    request: AppSjSyncRequest,
+) -> Result<AppSjSyncReport, String> {
+    tauri::async_runtime::spawn_blocking(move || appsj::sync_resources(&app, request))
+        .await
+        .map_err(|error| format!("任务失败: {error}"))?
+}
+
+#[tauri::command]
+fn list_appsj_resources(app: AppHandle) -> Result<Vec<AppSjResource>, String> {
+    appsj::list_resources(&app)
 }
 
 #[tauri::command]
@@ -196,6 +214,30 @@ async fn generate_paper(app: AppHandle, mut req: GenerateRequest) -> Result<Valu
                 req.school_bank_snippets = snips;
             }
         }
+        if req.mix_bank && req.public_bank_snippets.is_empty() {
+            let unit_name = req
+                .unit_id
+                .as_ref()
+                .and_then(|id| {
+                    pack.units
+                        .iter()
+                        .find(|unit| &unit.id == id || unit.name.contains(id))
+                })
+                .map(|unit| unit.name.as_str())
+                .unwrap_or("");
+            if let Ok(snippets) = appsj::pick_resource_snippets(
+                &app,
+                &req.subject,
+                &req.edition,
+                req.grade,
+                &req.semester,
+                &req.exam_type,
+                unit_name,
+                6,
+            ) {
+                req.public_bank_snippets = snippets;
+            }
+        }
         // 模板市集：注入结构
         if let Some(tid) = req.template_id.clone().filter(|s| !s.is_empty()) {
             if let Ok(tpl) = get_template(&app, &tid) {
@@ -297,7 +339,31 @@ async fn generate_template_paper(app: AppHandle, req: GenerateRequest) -> Result
     ai::clear_cancel_flag();
     tauri::async_runtime::spawn_blocking(move || {
         let pack = load_pack(&app, &req.knowledge_path)?;
-        Ok(build_template_paper(&req, &pack))
+        let unit_name = req
+            .unit_id
+            .as_ref()
+            .and_then(|id| {
+                pack.units
+                    .iter()
+                    .find(|unit| &unit.id == id || unit.name.contains(id))
+            })
+            .map(|unit| unit.name.as_str())
+            .unwrap_or("");
+        let verified = if req.mix_bank && req.subject == "math" {
+            appsj::pick_verified_math_expressions(
+                &app,
+                &req.edition,
+                req.grade,
+                &req.semester,
+                &req.exam_type,
+                unit_name,
+                24,
+            )
+            .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        Ok(build_template_paper(&req, &pack, &verified))
     })
     .await
     .map_err(|e| format!("任务失败: {e}"))?
@@ -551,7 +617,94 @@ async fn ebook_unit_pages(
     .map_err(|e| format!("任务失败: {e}"))?
 }
 
-fn build_template_paper(req: &GenerateRequest, pack: &knowledge::KnowledgePack) -> Value {
+fn offline_math_expressions(
+    grade: u8,
+    verified: &[(String, String, String)],
+) -> Vec<(String, String, String)> {
+    use std::collections::HashSet;
+
+    let fallback: &[&str] = match grade {
+        1..=2 => &[
+            "8+7", "16-9", "6+13", "20-8", "5×4", "18÷3", "7×3", "24÷6",
+            "12+9-5", "30-8+6", "4×6+3", "36÷6+8", "45-17", "28+35",
+            "9×5", "42÷7", "63-26", "37+18", "3×8", "32÷4", "50-23+7",
+            "18+12÷3", "6×7-9", "48÷8+15", "25+16-8", "54-19", "8×6",
+            "49÷7", "70-28", "34+29",
+        ],
+        3..=4 => &[
+            "432÷4", "208×5", "846÷6", "720÷3÷2", "450-120×3", "8×(156-89)",
+            "315÷5×4", "36+18÷6", "(45-9)÷6", "100-6×9", "125×8", "960÷6",
+            "304×3", "728÷7", "240+360÷6", "18×5+120", "900-425", "376+589",
+            "45×12", "864÷8", "600-24×9", "(320+160)÷6", "25×16", "1000-368",
+            "144÷9+36", "72×5", "630÷7", "48×6-90", "250×4", "936÷9",
+        ],
+        _ => &[
+            "125+375", "960÷24", "48×25", "7.5+2.8", "12.6-4.75", "3.2×5",
+            "24÷0.6", "1.2×(3.5+1.5)", "36÷0.4-15", "(24+36)÷5", "2.5×16",
+            "18.4÷4", "125×32", "4500÷18", "6.25+3.75", "14.8-6.9", "0.75×8",
+            "7.2÷0.9", "45×12-180", "(720-240)÷8", "3.6×25", "81÷0.3",
+            "1250-486", "768+945", "144÷12+38", "32×15", "630÷21", "4.8×6-9.8",
+            "250×16", "936÷18",
+        ],
+    };
+    let mut seen = HashSet::new();
+    let mut items = Vec::new();
+    for (expression, answer, source) in verified.iter().cloned() {
+        if seen.insert(expression.clone()) {
+            items.push((expression, answer, source));
+        }
+    }
+    for expression in fallback {
+        if items.len() >= 30 || !seen.insert((*expression).to_string()) {
+            continue;
+        }
+        if let Ok(answer) = verify::evaluate_simple_expression(expression) {
+            items.push(((*expression).to_string(), answer, "内置可验算题库".into()));
+        }
+    }
+    items
+}
+
+fn shifted_math_answer(answer: &str, delta: f64) -> String {
+    let value = answer.parse::<f64>().unwrap_or(0.0) + delta;
+    if (value - value.round()).abs() < 1e-9 {
+        format!("{:.0}", value)
+    } else {
+        let mut text = format!("{value:.6}");
+        while text.ends_with('0') {
+            text.pop();
+        }
+        text.trim_end_matches('.').to_string()
+    }
+}
+
+fn offline_math_problems(grade: u8) -> Vec<Value> {
+    if grade <= 2 {
+        vec![
+            serde_json::json!({"id":"5-1","stem":"1. 文具盒里原有18支铅笔，用去7支，又放入5支，现在有多少支？","options":[],"answer":"16支","analysis":"18-7+5=16（支）","score":10,"knowledgePoints":["加减混合"]}),
+            serde_json::json!({"id":"5-2","stem":"2. 4个小组，每组有6名同学，一共有多少名同学？","options":[],"answer":"24名","analysis":"4×6=24（名）","score":10,"knowledgePoints":["乘法应用"]}),
+            serde_json::json!({"id":"5-3","stem":"3. 把20本练习本平均分给5名同学，每名同学分到多少本？","options":[],"answer":"4本","analysis":"20÷5=4（本）","score":10,"knowledgePoints":["平均分"]}),
+        ]
+    } else if grade <= 4 {
+        vec![
+            serde_json::json!({"id":"5-1","stem":"1. 三年级有78名同学参加活动，平均分成6组，每组有多少名同学？","options":[],"answer":"13名","analysis":"78÷6=13（名）","score":10,"knowledgePoints":["除法应用"]}),
+            serde_json::json!({"id":"5-2","stem":"2. 同学们3天折了306只纸鹤。照这样计算，7天可以折多少只？","options":[],"answer":"714只","analysis":"306÷3×7=714（只）","score":10,"knowledgePoints":["归一问题"]}),
+            serde_json::json!({"id":"5-3","stem":"3. 用3个边长4厘米的正方形拼成一个长方形，拼成长方形的周长是多少厘米？","options":[],"answer":"32厘米","analysis":"长为12厘米、宽为4厘米，周长=(12+4)×2=32（厘米）","score":10,"knowledgePoints":["长方形周长"]}),
+        ]
+    } else {
+        vec![
+            serde_json::json!({"id":"5-1","stem":"1. 一批图书有480本，第一天借出总数的25%，第二天借出90本，还剩多少本？","options":[],"answer":"270本","analysis":"480-480×25%-90=270（本）","score":10,"knowledgePoints":["百分数应用"]}),
+            serde_json::json!({"id":"5-2","stem":"2. 一个长方体长8厘米、宽5厘米、高4厘米，它的体积是多少立方厘米？","options":[],"answer":"160立方厘米","analysis":"8×5×4=160（立方厘米）","score":10,"knowledgePoints":["长方体体积"]}),
+            serde_json::json!({"id":"5-3","stem":"3. 一辆汽车3小时行驶225千米。按这个速度，行驶7小时可行多少千米？","options":[],"answer":"525千米","analysis":"225÷3×7=525（千米）","score":10,"knowledgePoints":["归一问题"]}),
+        ]
+    }
+}
+
+fn build_template_paper(
+    req: &GenerateRequest,
+    pack: &knowledge::KnowledgePack,
+    verified_math: &[(String, String, String)],
+) -> Value {
     let subject_cn = match req.subject.as_str() {
         "math" => "数学",
         "english" => "英语",
@@ -603,6 +756,94 @@ fn build_template_paper(req: &GenerateRequest, pack: &knowledge::KnowledgePack) 
     let sample_points: Vec<String> = points.into_iter().take(8).collect();
 
     if req.subject == "math" {
+        let expressions = offline_math_expressions(req.grade, verified_math);
+        let fill_items: Vec<Value> = (0..5)
+            .map(|index| {
+                let (expression, answer, source) = &expressions[index];
+                serde_json::json!({
+                    "id": format!("1-{}", index + 1),
+                    "stem": format!("{}. {}＝（　　）", index + 1, expression),
+                    "options": [],
+                    "answer": answer,
+                    "analysis": format!("程序验算：{}={}; 来源：{}", expression, answer, source),
+                    "score": 4,
+                    "knowledgePoints": ["四则运算"]
+                })
+            })
+            .collect();
+        let judge_items: Vec<Value> = (0..5)
+            .map(|index| {
+                let (expression, answer, source) = &expressions[index + 5];
+                let is_correct = index % 2 == 0;
+                let shown = if is_correct {
+                    answer.clone()
+                } else {
+                    shifted_math_answer(answer, 1.0)
+                };
+                serde_json::json!({
+                    "id": format!("2-{}", index + 1),
+                    "stem": format!("{}. {}＝{}。（　　）", index + 1, expression, shown),
+                    "options": [],
+                    "answer": if is_correct { "√" } else { "×" },
+                    "analysis": format!("程序验算结果为 {}; 来源：{}", answer, source),
+                    "score": 2,
+                    "knowledgePoints": ["计算判断"]
+                })
+            })
+            .collect();
+        let choice_items: Vec<Value> = (0..5)
+            .map(|index| {
+                let (expression, answer, source) = &expressions[index + 10];
+                let correct_index = index % 4;
+                let distractors = [
+                    shifted_math_answer(answer, -1.0),
+                    shifted_math_answer(answer, 1.0),
+                    shifted_math_answer(answer, 10.0),
+                ];
+                let mut values = Vec::new();
+                let mut distractor_index = 0;
+                for option_index in 0..4 {
+                    if option_index == correct_index {
+                        values.push(answer.clone());
+                    } else {
+                        values.push(distractors[distractor_index].clone());
+                        distractor_index += 1;
+                    }
+                }
+                let labels = ["A", "B", "C", "D"];
+                let options = values
+                    .iter()
+                    .enumerate()
+                    .map(|(option_index, value)| format!("{}. {}", labels[option_index], value))
+                    .collect::<Vec<_>>();
+                serde_json::json!({
+                    "id": format!("3-{}", index + 1),
+                    "stem": format!("{}. {} 的得数是（　　）。", index + 1, expression),
+                    "options": options,
+                    "answer": labels[correct_index],
+                    "analysis": format!("{}={}; 来源：{}", expression, answer, source),
+                    "score": 2,
+                    "knowledgePoints": ["四则运算"]
+                })
+            })
+            .collect();
+        let calc_slice = &expressions[15..25];
+        let calc_stem = calc_slice
+            .chunks(4)
+            .map(|row| {
+                row.iter()
+                    .map(|(expression, _, _)| format!("{expression}＝　　　"))
+                    .collect::<Vec<_>>()
+                    .join("    ")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let calc_answers = calc_slice
+            .iter()
+            .map(|(_, answer, _)| answer.clone())
+            .collect::<Vec<_>>()
+            .join("；");
+        let public_source_count = verified_math.len().min(24);
         serde_json::json!({
             "meta": {
                 "edition": edition_cn,
@@ -613,83 +854,50 @@ fn build_template_paper(req: &GenerateRequest, pack: &knowledge::KnowledgePack) 
                 "title": title,
                 "totalScore": req.total_score,
                 "durationMin": req.duration_min,
-                "source": "template"
+                "source": if public_source_count > 0 {
+                    format!("本地可验算题库 + 公开网页素材（{} 道算式）", public_source_count)
+                } else {
+                    "本地可验算题库".to_string()
+                }
             },
             "sections": [
                 {
                     "type": "fill",
                     "title": "一、填空题（每空2分，共20分）",
                     "score": 20,
-                    "items": (0..5).map(|i| {
-                        let kp = sample_points.get(i).cloned().unwrap_or_else(|| "本单元知识点".into());
-                        serde_json::json!({
-                            "id": format!("1-{}", i+1),
-                            "stem": format!("{}. 与「{}」相关：请填写正确答案。（　　）", i+1, kp),
-                            "options": [],
-                            "answer": "（见教师评阅）",
-                            "analysis": "模板题，建议使用 AI 组卷获得完整题目",
-                            "score": 4,
-                            "knowledgePoints": [kp]
-                        })
-                    }).collect::<Vec<_>>()
+                    "items": fill_items
                 },
                 {
                     "type": "judge",
                     "title": "二、判断题（每题2分，共10分）",
                     "score": 10,
-                    "items": (0..5).map(|i| {
-                        serde_json::json!({
-                            "id": format!("2-{}", i+1),
-                            "stem": format!("{}. 下列说法正确。（　　）", i+1),
-                            "options": [],
-                            "answer": "√",
-                            "analysis": "模板占位",
-                            "score": 2,
-                            "knowledgePoints": []
-                        })
-                    }).collect::<Vec<_>>()
+                    "items": judge_items
                 },
                 {
                     "type": "choice",
                     "title": "三、选择题（每题2分，共10分）",
                     "score": 10,
-                    "items": (0..5).map(|i| {
-                        serde_json::json!({
-                            "id": format!("3-{}", i+1),
-                            "stem": format!("{}. 请选择正确答案。（　　）", i+1),
-                            "options": ["A. 选项一", "B. 选项二", "C. 选项三", "D. 选项四"],
-                            "answer": "A",
-                            "analysis": "模板占位",
-                            "score": 2,
-                            "knowledgePoints": []
-                        })
-                    }).collect::<Vec<_>>()
+                    "items": choice_items
                 },
                 {
                     "type": "calc",
                     "title": "四、计算题（共30分）",
                     "score": 30,
-                    "items": [
-                        {"id":"4-1","stem":"1. 直接写出得数（每题2分，共12分）\n6×7＝　　  48÷6＝　　  25+36＝　　  90-47＝　　  0×9＝　　  1×8＝","options":[],"answer":"42；8；61；43；0；8","analysis":"","score":12,"knowledgePoints":["口算"]},
-                        {"id":"4-2","stem":"2. 脱式计算（每题6分，共18分）\n（1）36+18÷6\n（2）(45-9)÷6\n（3）100-6×9","options":[],"answer":"39；6；46","analysis":"先乘除后加减","score":18,"knowledgePoints":["混合运算"]}
-                    ]
+                    "items": [{
+                        "id":"4-1",
+                        "stem": format!("1. 计算下面各题。\n{}", calc_stem),
+                        "options":[],
+                        "answer": calc_answers,
+                        "analysis":"所有算式均经本地表达式求值器验算",
+                        "score":30,
+                        "knowledgePoints":["口算", "混合运算"]
+                    }]
                 },
                 {
                     "type": "problem",
                     "title": "五、解决问题（共30分）",
                     "score": 30,
-                    "items": (0..3).map(|i| {
-                        let kp = sample_points.get(i).cloned().unwrap_or_else(|| "应用".into());
-                        serde_json::json!({
-                            "id": format!("5-{}", i+1),
-                            "stem": format!("{}.（10分）结合「{}」编一道应用题并解答。\n（模板卷：请改用 AI 组卷生成完整应用题）", i+1, kp),
-                            "options": [],
-                            "answer": "略",
-                            "analysis": "",
-                            "score": 10,
-                            "knowledgePoints": [kp]
-                        })
-                    }).collect::<Vec<_>>()
+                    "items": offline_math_problems(req.grade)
                 }
             ]
         })
@@ -739,6 +947,32 @@ fn build_template_paper(req: &GenerateRequest, pack: &knowledge::KnowledgePack) 
     }
 }
 
+#[cfg(test)]
+mod offline_bank_tests {
+    use super::*;
+
+    #[test]
+    fn offline_math_bank_has_enough_verified_expressions() {
+        for grade in [1, 3, 5] {
+            let items = offline_math_expressions(grade, &[]);
+            assert!(items.len() >= 25, "grade {grade} only has {}", items.len());
+            for (expression, answer, _) in items.iter().take(25) {
+                assert_eq!(
+                    verify::evaluate_simple_expression(expression).unwrap(),
+                    *answer
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn crawled_verified_expression_is_preferred() {
+        let crawled = vec![("432÷4".into(), "108".into(), "公开来源".into())];
+        let items = offline_math_expressions(3, &crawled);
+        assert_eq!(items[0], crawled[0]);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -764,6 +998,8 @@ pub fn run() {
             clear_api_key,
             get_catalog,
             update_curriculum,
+            sync_appsj_resources,
+            list_appsj_resources,
             get_curriculum_dir,
             cancel_generation,
             diff_curriculum,
