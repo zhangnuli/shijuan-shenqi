@@ -19,6 +19,7 @@ mod storage;
 mod templates;
 mod verify;
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use bank::{
     add_favorite, clear_favorites, delete_bank_paper, delete_favorite, get_bank_paper,
     import_paper_and_items, list_bank_papers, list_favorites, pick_favorite_snippets,
@@ -46,6 +47,7 @@ use quality::{inspect_paper, QualityReport};
 use review::{generate_redrill_paper, generate_review_outline, RedrillRequest, ReviewRequest};
 use scrape_dzkbw::{update_curriculum_from_dzkbw, UpdateCurriculumResult};
 use regex::Regex;
+use serde::Serialize;
 use serde_json::Value;
 use spec_table::{build_spec_table, SpecTable};
 use templates::{
@@ -589,6 +591,28 @@ async fn print_html_document(html: String) -> Result<String, String> {
     })
     .await
     .map_err(|e| format!("打印任务失败: {e}"))?
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PdfPreviewResult {
+    path: String,
+    data: String,
+}
+
+/// 将 HTML 转为 PDF 并返回给前端 PDF.js 预览，同时保留临时文件供确认打印复用。
+#[tauri::command]
+async fn render_html_pdf(html: String) -> Result<PdfPreviewResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = print_util::html_to_pdf(&html)?;
+        let bytes = std::fs::read(&path).map_err(|e| format!("读取 PDF 失败: {e}"))?;
+        Ok(PdfPreviewResult {
+            path: path.display().to_string(),
+            data: BASE64.encode(bytes),
+        })
+    })
+    .await
+    .map_err(|e| format!("PDF 预览任务失败: {e}"))?
 }
 
 /// 解析自有电子书阅读页链接（resId/bookId/contributeId）
@@ -1154,6 +1178,7 @@ pub fn run() {
             generate_unit_lessons_template,
             verify_math_paper,
             print_html_document,
+            render_html_pdf,
             ebook_parse_url,
             ebook_catalog,
             ebook_unit_pages,

@@ -3533,6 +3533,7 @@ dependencies = [
 name = "shijuan-shenqi"
 version = "0.1.5"
 dependencies = [
+ "base64 0.22.1",
  "directories",
  "encoding_rs",
  "log",

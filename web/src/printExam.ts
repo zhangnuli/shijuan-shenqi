@@ -96,6 +96,21 @@ export type PrintHtmlResult = {
   pdfPath?: string
 }
 
+export type PdfPreviewResult = {
+  path: string
+  data: string
+}
+
+/** 在 Tauri 中生成供 PDF.js 使用的 PDF 数据；浏览器开发环境返回 null。 */
+export async function renderHtmlPdf(html: string): Promise<PdfPreviewResult | null> {
+  if (!isTauri()) return null
+  return invoke<PdfPreviewResult>('render_html_pdf', { html })
+}
+
+export async function openPdfFile(path: string): Promise<void> {
+  await openPath(path)
+}
+
 /**
  * 打印 HTML。Tauri 下优先生成 PDF 并用系统默认程序打开，再由用户打印。
  */
@@ -103,7 +118,7 @@ export async function printHtml(html: string): Promise<PrintHtmlResult> {
   if (isTauri()) {
     try {
       const pdfPath = await invoke<string>('print_html_document', { html })
-      await openPath(pdfPath)
+      await openPdfFile(pdfPath)
       return { mode: 'pdf', pdfPath }
     } catch (e) {
       console.warn('[print] PDF 导出失败，回退 iframe 打印', e)

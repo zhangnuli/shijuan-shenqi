@@ -1483,6 +1483,16 @@ body {
   background: #fff;
 }
 
+.print-preview-warning {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid #f3d19e;
+  border-radius: 6px;
+  background: #fdf6ec;
+  color: #a15c00;
+  font-size: 12px;
+}
+
 .bundle-tabs {
   display: flex;
   flex-wrap: wrap;
