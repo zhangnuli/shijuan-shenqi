@@ -30,8 +30,8 @@ use config::{
     provider_presets, save_config, AppConfig, ProviderPreset,
 };
 use generate::{
-    generate_parallel_set, generate_variant_b, generate_with_ai, regenerate_item, GenerateRequest,
-    RegenItemRequest,
+    generate_parallel_set, generate_variant_b, generate_with_ai, regenerate_item,
+    validate_exam_output, GenerateRequest, RegenItemRequest,
 };
 use history::{
     add_history, clear_history, delete_history, get_history, list_history, HistoryEntry,
@@ -45,6 +45,7 @@ use lesson_plan::{
 use quality::{inspect_paper, QualityReport};
 use review::{generate_redrill_paper, generate_review_outline, RedrillRequest, ReviewRequest};
 use scrape_dzkbw::{update_curriculum_from_dzkbw, UpdateCurriculumResult};
+use regex::Regex;
 use serde_json::Value;
 use spec_table::{build_spec_table, SpecTable};
 use templates::{
@@ -363,7 +364,9 @@ async fn generate_template_paper(app: AppHandle, req: GenerateRequest) -> Result
         } else {
             Vec::new()
         };
-        Ok(build_template_paper(&req, &pack, &verified))
+        let paper = build_template_paper(&req, &pack, &verified);
+        validate_exam_output(&paper, "结构模板")?;
+        Ok(paper)
     })
     .await
     .map_err(|e| format!("任务失败: {e}"))?
@@ -439,6 +442,7 @@ fn bank_import_paper(
     paper: Value,
     also_items: bool,
 ) -> Result<Value, String> {
+    validate_exam_output(&paper, "导入试卷")?;
     let (entry, added) = import_paper_and_items(&app, paper, also_items)?;
     Ok(serde_json::json!({
         "paper": entry,
@@ -470,7 +474,9 @@ async fn generate_review(req: ReviewRequest) -> Result<Value, String> {
 async fn generate_redrill(req: RedrillRequest) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let cfg = load_config();
-        generate_redrill_paper(&cfg, &req)
+        let paper = generate_redrill_paper(&cfg, &req)?;
+        validate_exam_output(&paper, "错题再练卷")?;
+        Ok(paper)
     })
     .await
     .map_err(|e| format!("任务失败: {e}"))?
@@ -755,7 +761,7 @@ fn build_template_paper(
 
     let sample_points: Vec<String> = points.into_iter().take(8).collect();
 
-    if req.subject == "math" {
+    let paper = if req.subject == "math" {
         let expressions = offline_math_expressions(req.grade, verified_math);
         let fill_items: Vec<Value> = (0..5)
             .map(|index| {
@@ -863,19 +869,19 @@ fn build_template_paper(
             "sections": [
                 {
                     "type": "fill",
-                    "title": "一、填空题（每空2分，共20分）",
+                    "title": "一、填空题（共20分）",
                     "score": 20,
                     "items": fill_items
                 },
                 {
                     "type": "judge",
-                    "title": "二、判断题（每题2分，共10分）",
+                    "title": "二、判断题（共10分）",
                     "score": 10,
                     "items": judge_items
                 },
                 {
                     "type": "choice",
-                    "title": "三、选择题（每题2分，共10分）",
+                    "title": "三、选择题（共10分）",
                     "score": 10,
                     "items": choice_items
                 },
@@ -944,7 +950,93 @@ fn build_template_paper(
                 }
             ]
         })
+    };
+
+    scale_template_scores(paper, req.total_score)
+}
+
+/// 将离线模板的基准 100 分按用户设置缩放，保证元数据、大题和小题分值一致。
+fn scale_template_scores(mut paper: Value, target_score: u32) -> Value {
+    let target = target_score.max(1) as i64;
+    let Some(sections) = paper.get_mut("sections").and_then(Value::as_array_mut) else {
+        return paper;
+    };
+    let base_sum: f64 = sections
+        .iter()
+        .map(|section| section.get("score").and_then(Value::as_f64).unwrap_or(0.0))
+        .sum();
+    if base_sum <= 0.0 {
+        return paper;
     }
+
+    let total_re = Regex::new(r"共\s*[0-9]+(?:\.[0-9]+)?\s*分").ok();
+    let section_count = sections.len();
+    let mut remaining_sections = target;
+    for (section_index, section) in sections.iter_mut().enumerate() {
+        let old_section_score = section
+            .get("score")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0);
+        let new_section_score = if section_index + 1 == section_count {
+            remaining_sections
+        } else {
+            ((old_section_score / base_sum) * target as f64)
+                .round()
+                .max(1.0) as i64
+        };
+        remaining_sections -= new_section_score;
+        if let Some(object) = section.as_object_mut() {
+            object.insert("score".into(), Value::from(new_section_score));
+            if let Some(title) = object.get("title").and_then(Value::as_str) {
+                let next_title = if let Some(re) = &total_re {
+                    if re.is_match(title) {
+                        re.replace(title, format!("共{new_section_score}分")).to_string()
+                    } else {
+                        format!("{title}（共{new_section_score}分）")
+                    }
+                } else {
+                    title.to_string()
+                };
+                object.insert("title".into(), Value::String(next_title));
+            }
+
+            let items = object
+                .get_mut("items")
+                .and_then(Value::as_array_mut)
+                .map(|items| items as &mut Vec<Value>);
+            if let Some(items) = items {
+                let item_count = items.len();
+                let item_sum: f64 = items
+                    .iter()
+                    .map(|item| item.get("score").and_then(Value::as_f64).unwrap_or(0.0))
+                    .sum();
+                if item_sum > 0.0 {
+                    let mut remaining_items = new_section_score;
+                    for (item_index, item) in items.iter_mut().enumerate() {
+                        let old_item_score = item
+                            .get("score")
+                            .and_then(Value::as_f64)
+                            .unwrap_or(0.0);
+                        let new_item_score = if item_index + 1 == item_count {
+                            remaining_items
+                        } else {
+                            ((old_item_score / item_sum) * new_section_score as f64)
+                                .round()
+                                .max(1.0) as i64
+                        };
+                        remaining_items -= new_item_score;
+                        if let Some(item_object) = item.as_object_mut() {
+                            item_object.insert("score".into(), Value::from(new_item_score));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if let Some(meta) = paper.get_mut("meta").and_then(Value::as_object_mut) {
+        meta.insert("totalScore".into(), Value::from(target));
+    }
+    paper
 }
 
 #[cfg(test)]
@@ -970,6 +1062,27 @@ mod offline_bank_tests {
         let crawled = vec![("432÷4".into(), "108".into(), "公开来源".into())];
         let items = offline_math_expressions(3, &crawled);
         assert_eq!(items[0], crawled[0]);
+    }
+
+    #[test]
+    fn template_score_scaling_preserves_contract() {
+        let paper = serde_json::json!({
+            "meta": {"title":"模板","subject":"数学","grade":3,"totalScore":100,"durationMin":40},
+            "sections": [
+                {"title":"一、基础（共50分）","score":50,"items":[
+                    {"id":"1-1","stem":"1+1","answer":"2","score":25},
+                    {"id":"1-2","stem":"2+2","answer":"4","score":25}
+                ]},
+                {"title":"二、应用（共50分）","score":50,"items":[
+                    {"id":"2-1","stem":"应用题","answer":"略","score":50}
+                ]}
+            ]
+        });
+        let scaled = scale_template_scores(paper, 80);
+        contracts::validate_exam_paper(&scaled).unwrap();
+        assert_eq!(scaled["meta"]["totalScore"], 80);
+        assert_eq!(scaled["sections"][0]["score"], 40);
+        assert_eq!(scaled["sections"][1]["score"], 40);
     }
 }
 

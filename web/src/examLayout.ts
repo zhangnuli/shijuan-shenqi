@@ -10,8 +10,9 @@ export function stripItemNumber(stem: string): string {
 }
 
 /**
- * Short one-line calculations need only a small answer space. Higher-scored
- * calculations are kept as worked problems even when their stem is an expression.
+ * Short one-line arithmetic expressions can share a row. The score does not
+ * decide the layout: a 3- or 5-point expression still should not waste a
+ * whole line when it does not require a written solution.
  */
 export function isCompactCalculationItem(
   item: Pick<ExamItem, 'stem' | 'score' | 'options'>,
@@ -22,7 +23,6 @@ export function isCompactCalculationItem(
   const raw = item.stem || ''
   const stem = stripItemNumber(raw).replace(/[\s　]+/g, '')
   if (!stem || raw.includes('\n') || stem.length > 36) return false
-  if (item.score != null && item.score > 2) return false
   if (/[A-Za-z\u4e00-\u9fff]/.test(stem)) return false
   if (!/[0-9０-９]/.test(stem) || !/[+\-×÷*/＋－]/.test(stem)) return false
   return true

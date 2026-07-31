@@ -369,13 +369,13 @@ export function buildLessonPrintHtml(
     return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"/><title>${esc(g?.title || '家长辅导手册')}</title>
 <style>
 @page{size:A4;margin:12mm 11mm 16mm 11mm;@bottom-center{content:"家长辅导手册 · 第 " counter(page) " 页";font-family:"宋体",SimSun,serif;font-size:9pt;color:#333}}
-body{font-family:"宋体",SimSun,serif;font-size:10.5pt;line-height:1.45;color:#000;margin:0}
+body{font-family:"宋体",SimSun,serif;font-size:10.5pt;line-height:1.35;color:#000;margin:0}
 h1{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:16pt;margin:0 0 6px}
-h2{font-family:"黑体",SimHei,sans-serif;font-size:11pt;margin:10px 0 4px;border-bottom:1px solid #000;padding-bottom:2px}
+h2{font-family:"黑体",SimHei,sans-serif;font-size:11pt;margin:6px 0 2px;border-bottom:1px solid #000;padding-bottom:1px}
 .school{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:12pt;font-weight:bold;margin:0 0 4px}
 .sub{text-align:center;font-size:10.5pt;margin-bottom:6px}
-ul{margin:4px 0 8px 1.2em;padding:0}
-.step{margin:8px 0;padding:6px 8px;border:1px solid #ddd;border-radius:4px}
+ul{margin:2px 0 4px 1.2em;padding:0}
+.step{margin:5px 0;padding:4px 6px;border:1px solid #ddd;border-radius:4px}
 .muted{color:#444;font-size:10pt;margin-top:4px}
 .encourage{margin-top:12px;padding:10px;background:#fafafa;border-left:3px solid #333}
 </style></head><body>
@@ -409,15 +409,15 @@ ${brands}
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"/><title>${esc(m.title || '教案')}</title>
 <style>
 @page{size:A4;margin:12mm 11mm 16mm 11mm;@bottom-center{content:"教案 · 第 " counter(page) " 页";font-family:"宋体",SimSun,serif;font-size:9pt;color:#333}}
-body{font-family:"宋体",SimSun,serif;font-size:10.5pt;line-height:1.45;color:#000;margin:0}
+body{font-family:"宋体",SimSun,serif;font-size:10.5pt;line-height:1.35;color:#000;margin:0}
 h1{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:16pt;margin:0 0 6px}
-h2{font-family:"黑体",SimHei,sans-serif;font-size:11pt;margin:10px 0 4px;border-bottom:1px solid #000;padding-bottom:2px}
+h2{font-family:"黑体",SimHei,sans-serif;font-size:11pt;margin:6px 0 2px;border-bottom:1px solid #000;padding-bottom:1px}
 .school{text-align:center;font-family:"黑体",SimHei,sans-serif;font-size:12pt;font-weight:bold;margin:0 0 4px}
 .sub,.meta{text-align:center;font-size:10.5pt;margin-bottom:6px}
-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:10pt}
-th,td{border:1px solid #000;padding:5px 6px;vertical-align:top}
+table{width:100%;border-collapse:collapse;margin:4px 0;font-size:10pt}
+th,td{border:1px solid #000;padding:3px 4px;vertical-align:top}
 th{background:#f2f2f2}
-ul{margin:4px 0 8px 1.2em;padding:0}
+ul{margin:2px 0 4px 1.2em;padding:0}
 .muted{color:#444;font-size:9.5pt}
 pre.board{white-space:pre-wrap;font-family:"宋体",SimSun,serif;border:1px solid #999;padding:8px;margin:6px 0}
 </style></head><body>

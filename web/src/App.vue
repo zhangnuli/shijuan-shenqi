@@ -27,6 +27,7 @@ import type {
   BankPaper,
   GenerateRequest,
   HistoryEntry,
+  HistoryWork,
   LessonPlan,
   LessonPlanBundle,
   ParallelSet,
@@ -45,6 +46,7 @@ import { buildEbookPrintHtml, type EbookUnitPages } from './buildEbookPrintHtml'
 import { isCalculationSection, isCompactCalculationItem } from './examLayout'
 import type { BrandHeader } from './brand'
 import { aiSteps, aiTips, formatFriendlyError, useAiProgress } from './composables/useAiProgress'
+import { useHistory, type HistoryFilter } from './composables/useHistory'
 import { invokeCommand as invoke } from './services/tauriClient'
 import AiProgressDialog from './components/AiProgressDialog.vue'
 
@@ -316,8 +318,15 @@ watch(
   },
 )
 
-const historyFilter = ref<'all' | 'exam' | 'lesson' | 'other'>('all')
+const historyFilter = ref<HistoryFilter>('all')
 const historyKeyword = ref('')
+const {
+  historyKindOf,
+  historyKindLabel,
+  historyKindTagType,
+  historyCounts,
+  filteredHistory,
+} = useHistory(historyList, historyFilter, historyKeyword)
 const hasApiKey = computed(() => Boolean(config.apiKey.trim() || config.apiKeyConfigured))
 const isLocalAi = computed(() => {
   const base = config.apiBase.trim().toLowerCase()
@@ -332,74 +341,6 @@ const structureModeLabel = computed(() => {
   if (form.structureMode === 'strict') return '按严格模板组卷'
   if (form.structureMode === 'free') return '自由智能组卷'
   return form.templateId ? '按模板智能组卷' : '智能组卷'
-})
-
-/** 统一历史类型：exam | lesson | other */
-function historyKindOf(h: HistoryEntry): 'exam' | 'lesson' | 'other' {
-  const paper = h.paper as ExamPaper &
-    LessonPlan &
-    LessonPlanBundle &
-    ReviewOutline & { kind?: string }
-  const raw = (h.kind || paper?.kind || '').toString()
-  if (raw === 'reviewOutline' || paper?.knowledgeFocus) return 'other'
-  if (raw === 'parallelSet') return 'other'
-  if (raw === 'lessonPlan' || raw === 'lessonPlanBundle') return 'lesson'
-  if (Array.isArray(paper?.plans) && paper.plans.length) return 'lesson'
-  if (paper?.process && paper?.objectives) return 'lesson'
-  if (paper?.sections) return 'exam'
-  return 'exam'
-}
-
-function historyKindLabel(h: HistoryEntry): string {
-  const paper = h.paper as ExamPaper &
-    LessonPlan &
-    LessonPlanBundle &
-    ReviewOutline & { kind?: string }
-  const raw = (h.kind || paper?.kind || '').toString()
-  if (raw === 'lessonPlanBundle' || (Array.isArray(paper?.plans) && paper.plans.length)) return '全课时'
-  if (raw === 'reviewOutline' || paper?.knowledgeFocus) return '讲评'
-  if (raw === 'parallelSet') return '平行卷'
-  if (historyKindOf(h) === 'lesson') return '教案'
-  return '试卷'
-}
-
-function historyKindTagType(h: HistoryEntry): 'primary' | 'warning' | 'success' | 'info' {
-  const lab = historyKindLabel(h)
-  if (lab === '教案' || lab === '全课时') return 'warning'
-  if (lab === '讲评') return 'success'
-  if (lab === '平行卷') return 'info'
-  return 'primary'
-}
-
-const historyCounts = computed(() => {
-  const list = historyList.value || []
-  let exam = 0
-  let lesson = 0
-  let other = 0
-  for (const h of list) {
-    const k = historyKindOf(h)
-    if (k === 'exam') exam++
-    else if (k === 'lesson') lesson++
-    else other++
-  }
-  return { all: list.length, exam, lesson, other }
-})
-
-const filteredHistory = computed(() => {
-  let list = historyList.value || []
-  if (historyFilter.value !== 'all') {
-    list = list.filter((h) => historyKindOf(h) === historyFilter.value)
-  }
-  const q = historyKeyword.value.trim().toLowerCase()
-  if (q) {
-    list = list.filter(
-      (h) =>
-        (h.title || '').toLowerCase().includes(q) ||
-        (h.summary || '').toLowerCase().includes(q) ||
-        historyKindLabel(h).includes(q),
-    )
-  }
-  return list
 })
 
 function currentBrand(): BrandHeader {
@@ -929,7 +870,7 @@ async function refreshHistory() {
   }
 }
 
-async function saveToHistory(p: ExamPaper) {
+async function saveToHistory(p: HistoryWork) {
   try {
     await invoke('history_add', {
       paper: p,
@@ -1618,7 +1559,7 @@ async function clearFavoritesAll() {
 
 async function openBankPaper(id: string) {
   const entry = await invoke<BankPaper>('bank_get_paper', { id })
-  paper.value = entry.paper
+  paper.value = entry.paper as ExamPaper
   parallelSet.value = null
   verifyReport.value = null
   wrongKeys.value = []
@@ -1732,7 +1673,7 @@ async function onGenerateReview() {
     })
     reviewOutline.value = outline
     reviewDialogVisible.value = true
-    await saveToHistory(outline as unknown as ExamPaper)
+    await saveToHistory(outline)
     ElMessage.success('讲评提纲已生成')
   } catch (e) {
     ElMessage.error(`讲评稿失败：${formatFriendlyError(e)}`)
@@ -2041,7 +1982,7 @@ async function onGenerateLesson() {
     lessonPlan.value = result
     workMode.value = 'lesson'
     previewTab.value = 'lesson'
-    await saveToHistory(result as unknown as ExamPaper)
+    await saveToHistory(result)
     stopAiPanelSuccess({
       meta: {
         title: result.meta?.title || '教案',
@@ -2075,7 +2016,7 @@ async function onLessonTemplate() {
     paper.value = null
     workMode.value = 'lesson'
     previewTab.value = 'lesson'
-    await saveToHistory(result as unknown as ExamPaper)
+    await saveToHistory(result)
     ElMessage.success('已生成教案结构模板')
   } catch (e) {
     ElMessage.error(`模板失败：${e}`)
@@ -2117,7 +2058,7 @@ async function onGenerateLinked() {
     const lessonReq = buildLessonReq()
     const plan = await invoke<LessonPlan>('generate_lesson', { req: lessonReq })
     lessonPlan.value = plan
-    await saveToHistory(plan as unknown as ExamPaper)
+    await saveToHistory(plan)
 
     // 2) 配套单元卷
     linkProgress.value = '练习卷'
@@ -2261,7 +2202,7 @@ async function onGenerateUnitAllLessons(useAi: boolean) {
     workMode.value = 'lesson'
     previewTab.value = 'lesson'
     // 历史：存整个 bundle
-    await saveToHistory(bundle as unknown as ExamPaper)
+    await saveToHistory(bundle)
     stopAiPanelSuccess({
       meta: {
         title: bundle.meta?.title || '全课时教案',
@@ -2487,9 +2428,9 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
             if (isProblem) {
               blank = `<div class="problem-space"></div>`
             } else if (isWriting) {
-              blank = `<div class="write-lines">${'<div class="wline"></div>'.repeat(12)}</div>`
+              blank = `<div class="write-lines">${'<div class="wline"></div>'.repeat(8)}</div>`
             } else if (isReading) {
-              blank = `<div class="write-lines short">${'<div class="wline"></div>'.repeat(3)}</div>`
+              blank = `<div class="write-lines short">${'<div class="wline"></div>'.repeat(2)}</div>`
             } else if (isCalc && !compactCalc) {
               blank = `<div class="calc-space"></div>`
             } else if (isChoice || isJudge || isFill) {
@@ -2547,7 +2488,7 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
     font-family: "宋体", SimSun, "Microsoft YaHei", serif;
     font-size: 10.5pt;
     color: #000;
-    line-height: 1.45;
+    line-height: 1.35;
     margin: 0;
     padding: 0;
   }
@@ -2580,14 +2521,14 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
     line-height: 1.4;
   }
   /* 大题允许跨页，避免半页空白 */
-  .sec { margin-bottom: 8px; page-break-inside: auto; }
+  .sec { margin-bottom: 4px; page-break-inside: auto; }
   .sec h2 {
     font-family: "黑体", SimHei, sans-serif;
     font-size: 11pt;
-    margin: 8px 0 4px;
+    margin: 5px 0 2px;
     font-weight: bold;
   }
-  .item { margin-bottom: 5px; page-break-inside: avoid; }
+  .item { margin-bottom: 3px; page-break-inside: avoid; }
   .stem { white-space: pre-wrap; }
   .calc-grid {
     display: grid;
@@ -2606,11 +2547,11 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
     margin-top: 2px;
   }
   .item-gap { height: 4px; }
-  .problem-space { height: 96px; margin: 2px 0 6px; }
-  .write-lines { margin: 3px 0 6px; }
-  .write-lines.short .wline { height: 20px; }
-  .wline { height: 22px; border-bottom: 1px solid #333; margin-bottom: 1px; }
-  .calc-space { height: 64px; margin: 2px 0 6px; }
+  .problem-space { height: 60px; margin: 1px 0 3px; }
+  .write-lines { margin: 2px 0 3px; }
+  .write-lines.short .wline { height: 17px; }
+  .wline { height: 18px; border-bottom: 1px solid #333; margin-bottom: 1px; }
+  .calc-space { height: 36px; margin: 1px 0 3px; }
   .ans { color: #000; margin-top: 2px; font-size: 10pt; }
   .school { text-align:center; font-family:"黑体",SimHei,sans-serif; font-size:11pt; font-weight:bold; margin:0 0 2px; }
   .end {
@@ -2858,7 +2799,7 @@ async function loadHistoryEntry(id: string) {
       workMode.value = 'lesson'
       previewTab.value = 'lesson'
     } else {
-      paper.value = entry.paper
+      paper.value = entry.paper as ExamPaper
       lessonPlan.value = null
       lessonBundle.value = null
       workMode.value = 'exam'

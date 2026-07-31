@@ -1,6 +1,6 @@
 use crate::ai::{chat_completion, extract_json};
 use crate::config::AppConfig;
-use crate::contracts::validate_exam_paper;
+use crate::contracts::{validate_exam_item, validate_exam_paper};
 use crate::knowledge::KnowledgePack;
 use crate::quality::inspect_paper;
 use crate::verify::repair_math_answers;
@@ -472,10 +472,16 @@ pub fn generate_with_ai(
     let json_str = extract_json(&raw)?;
     let value: Value =
         serde_json::from_str(&json_str).map_err(|e| format!("试卷 JSON 无效: {e}\n{json_str}"))?;
-    validate_exam_paper(&value)?;
     // 口算/脱式等可验算题：答案算错时用程序结果自动修正，避免「3/8=0.375」类误杀整卷
     let (value, _math_fixed) = repair_math_answers(&value);
-    let quality = inspect_paper(&value);
+    validate_exam_output(&value, "试卷")?;
+    Ok(value)
+}
+
+/// 所有完整试卷输出共用的合同与质检入口。
+pub fn validate_exam_output(value: &Value, label: &str) -> Result<(), String> {
+    validate_exam_paper(value)?;
+    let quality = inspect_paper(value);
     if quality.error_count > 0 {
         let details = quality
             .issues
@@ -485,9 +491,9 @@ pub fn generate_with_ai(
             .map(|issue| issue.message.as_str())
             .collect::<Vec<_>>()
             .join("；");
-        return Err(format!("试卷未通过自动质检: {details}"));
+        return Err(format!("{label}未通过自动质检: {details}"));
     }
-    Ok(value)
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -561,9 +567,16 @@ pub fn regenerate_item(cfg: &AppConfig, req: &RegenItemRequest) -> Result<Value,
     let json_str = extract_json(&raw)?;
     let item: Value =
         serde_json::from_str(&json_str).map_err(|e| format!("换题 JSON 无效: {e}"))?;
-    if item.get("stem").is_none() {
-        return Err("换题结果缺少 stem".into());
+    let mut item = item;
+    if let Some(obj) = item.as_object_mut() {
+        if let Some(id) = old.get("id") {
+            obj.insert("id".into(), id.clone());
+        }
+        if let Some(score) = old.get("score") {
+            obj.insert("score".into(), score.clone());
+        }
     }
+    validate_exam_item(&item, sec_type, sec_title)?;
     Ok(item)
 }
 
@@ -614,6 +627,7 @@ pub fn generate_variant_labeled(
         }
         meta.insert("variant".into(), Value::String(label.to_string()));
     }
+    validate_exam_output(&value, &format!("{label}卷"))?;
     Ok(value)
 }
 

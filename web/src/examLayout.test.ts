@@ -12,14 +12,14 @@ describe('isCompactCalculationItem', () => {
     ).toBe(true)
   })
 
-  it('keeps higher-scored expressions as worked calculations', () => {
+  it('packs higher-scored short expressions when no written solution is needed', () => {
     expect(
       isCompactCalculationItem(
         { stem: '1.2×(3.5+1.5)=', score: 3 },
         'calc',
         '四、计算题',
       ),
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it('keeps equations and worded prompts out of the compact grid', () => {

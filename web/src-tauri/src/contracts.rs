@@ -91,6 +91,7 @@ pub fn validate_exam_paper(value: &Value) -> Result<(), String> {
         return Err("试卷没有大题".into());
     }
 
+    let mut section_score_sum = 0.0;
     for (section_index, section) in paper.sections.iter().enumerate() {
         if !non_empty(&section.title) || section.items.is_empty() || section.score <= 0.0 {
             return Err(format!(
@@ -98,6 +99,8 @@ pub fn validate_exam_paper(value: &Value) -> Result<(), String> {
                 section_index + 1
             ));
         }
+        section_score_sum += section.score;
+        let mut item_score_sum = 0.0;
         for (item_index, item) in section.items.iter().enumerate() {
             if !non_empty(&item.stem) {
                 return Err(format!(
@@ -113,14 +116,49 @@ pub fn validate_exam_paper(value: &Value) -> Result<(), String> {
                     item_index + 1
                 ));
             }
-            if item.score < 0.0 {
+            if item.score <= 0.0 {
                 return Err(format!(
                     "第 {} 大题第 {} 小题分值无效",
                     section_index + 1,
                     item_index + 1
                 ));
             }
+            item_score_sum += item.score;
             let _ = &item.id;
+        }
+        if (item_score_sum - section.score).abs() > 0.51 {
+            return Err(format!(
+                "第 {} 大题小题分值合计 {} 与大题分值 {} 不一致",
+                section_index + 1,
+                item_score_sum,
+                section.score
+            ));
+        }
+    }
+    if (section_score_sum - paper.meta.total_score).abs() > 0.51 {
+        return Err(format!(
+            "各大题分值合计 {} 与试卷满分 {} 不一致",
+            section_score_sum, paper.meta.total_score
+        ));
+    }
+    Ok(())
+}
+
+/// 校验单题替换结果，避免“换题”绕过整卷合同。
+pub fn validate_exam_item(value: &Value, section_type: &str, section_title: &str) -> Result<(), String> {
+    let item: ExamItem = serde_json::from_value(value.clone())
+        .map_err(|e| format!("替换题结构不符合合同: {e}"))?;
+    if !non_empty(&item.stem) || !non_empty(&item.answer) || item.score <= 0.0 {
+        return Err("替换题缺少题干、答案或有效分值".into());
+    }
+    if section_type == "choice" || section_title.contains("选择") {
+        let options = value
+            .get("options")
+            .and_then(|v| v.as_array())
+            .map(|v| v.len())
+            .unwrap_or(0);
+        if options < 2 {
+            return Err("替换题为选择题但选项不足".into());
         }
     }
     Ok(())
@@ -174,6 +212,24 @@ mod tests {
             "sections": [{"title":"一、计算","score":100,"items":[{"id":"1","stem":"1+1","answer":"2","score":100}]}]
         });
         assert!(validate_exam_paper(&value).is_ok());
+    }
+
+    #[test]
+    fn rejects_score_mismatch() {
+        let value = json!({
+            "meta": {"title":"测试","subject":"数学","grade":3,"totalScore":100,"durationMin":60},
+            "sections": [{"title":"一、计算","score":90,"items":[{"id":"1","stem":"1+1","answer":"2","score":90}]}]
+        });
+        assert!(validate_exam_paper(&value).unwrap_err().contains("满分"));
+    }
+
+    #[test]
+    fn rejects_item_score_mismatch() {
+        let value = json!({
+            "meta": {"title":"测试","subject":"数学","grade":3,"totalScore":100,"durationMin":60},
+            "sections": [{"title":"一、计算","score":100,"items":[{"id":"1","stem":"1+1","answer":"2","score":90}]}]
+        });
+        assert!(validate_exam_paper(&value).unwrap_err().contains("小题分值"));
     }
 
     #[test]

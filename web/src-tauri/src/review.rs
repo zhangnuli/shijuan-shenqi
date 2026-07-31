@@ -2,6 +2,8 @@
 
 use crate::ai::{chat_completion, extract_json};
 use crate::config::AppConfig;
+use crate::contracts::validate_exam_paper;
+use crate::quality::inspect_paper;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -345,6 +347,19 @@ pub fn generate_redrill_paper(cfg: &AppConfig, req: &RedrillRequest) -> Result<V
             let value: Value = serde_json::from_str(&json_str)
                 .map_err(|e| format!("再练卷 JSON 无效: {e}"))?;
             if value.get("meta").is_none() || value.get("sections").is_none() {
+                return Ok(local_redrill(
+                    &title,
+                    &subject,
+                    &edition,
+                    &semester,
+                    grade,
+                    req.total_score,
+                    req.duration_min,
+                    &kps,
+                    &items,
+                ));
+            }
+            if validate_exam_paper(&value).is_err() || inspect_paper(&value).error_count > 0 {
                 return Ok(local_redrill(
                     &title,
                     &subject,

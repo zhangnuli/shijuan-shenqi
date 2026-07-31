@@ -438,13 +438,13 @@ function renderItem(
 
   // 学生卷答题区：按题型适度留白；数学应用/计算不画下划线
   if (isProblemSection(type, title)) {
-    out.push(...emptyLines(5, 40, 360))
+    out.push(...emptyLines(3, 20, 300))
   } else if (isWritingSection(type, title)) {
-    out.push(...answerLines(12))
+    out.push(...answerLines(8))
   } else if (isReadingSection(type, title)) {
-    out.push(...answerLines(3))
+    out.push(...answerLines(2))
   } else if (isCalcSection(type, title)) {
-    out.push(...emptyLines(2, 40, 320))
+    out.push(...emptyLines(1, 20, 280))
   } else if (isChoiceSection(type, title) || isJudgeSection(type, title)) {
     // 选择/判断：题干+选项即可，仅留极小间距
     out.push(para('', { after: 40, line: 240 }))

@@ -41,9 +41,12 @@ export interface HistoryEntry {
   summary: string
   /** exam | lessonPlan */
   kind?: string
-  paper: ExamPaper
+  paper: HistoryWork
   formSnapshot?: Record<string, unknown>
 }
+
+/** 历史记录中允许保存的工作成果，不再把教案强行伪装成试卷。 */
+export type HistoryWork = ExamPaper | LessonPlan | LessonPlanBundle | ParallelSet | ReviewOutline
 
 export interface UnitInfo {
   id: string
