@@ -32,7 +32,7 @@ use config::{
 };
 use generate::{
     generate_parallel_set, generate_variant_b, generate_with_ai, regenerate_item,
-    validate_exam_output, GenerateRequest, RegenItemRequest,
+    section_item_count, validate_exam_output, GenerateRequest, RegenItemRequest,
 };
 use history::{
     add_history, clear_history, delete_history, get_history, list_history, HistoryEntry,
@@ -785,9 +785,57 @@ fn build_template_paper(
 
     let sample_points: Vec<String> = points.into_iter().take(8).collect();
 
-    let paper = if req.subject == "math" {
+    let paper = if req.subject == "math" && req.exam_type == "oral" {
         let expressions = offline_math_expressions(req.grade, verified_math);
-        let fill_items: Vec<Value> = (0..5)
+        let item_count = section_item_count(req, 0)
+            .unwrap_or(24)
+            .min(expressions.len());
+        let base_score = 100 / item_count.max(1) as u32;
+        let items: Vec<Value> = (0..item_count)
+            .map(|index| {
+                let (expression, answer, source) = &expressions[index];
+                let score = if index + 1 == item_count {
+                    100 - base_score * (item_count.saturating_sub(1) as u32)
+                } else {
+                    base_score
+                };
+                serde_json::json!({
+                    "id": format!("1-{}", index + 1),
+                    "stem": format!("{}. {}＝（　　）", index + 1, expression),
+                    "options": [],
+                    "answer": answer,
+                    "analysis": format!("程序验算：{}={}; 来源：{}", expression, answer, source),
+                    "score": score,
+                    "knowledgePoints": ["口算"]
+                })
+            })
+            .collect();
+        serde_json::json!({
+            "meta": {
+                "edition": edition_cn,
+                "subject": subject_cn,
+                "grade": req.grade,
+                "semester": sem,
+                "examType": exam,
+                "title": title,
+                "totalScore": req.total_score,
+                "durationMin": req.duration_min,
+                "source": "本地可验算口算题库"
+            },
+            "sections": [{
+                "type": "calc",
+                "title": "一、直接写得数（共100分）",
+                "score": 100,
+                "items": items
+            }]
+        })
+    } else if req.subject == "math" {
+        let expressions = offline_math_expressions(req.grade, verified_math);
+        let fill_count = section_item_count(req, 0).unwrap_or(6).min(expressions.len());
+        let judge_count = section_item_count(req, 1).unwrap_or(6);
+        let choice_count = section_item_count(req, 2).unwrap_or(6);
+        let calc_count = section_item_count(req, 3).unwrap_or(8);
+        let fill_items: Vec<Value> = (0..fill_count)
             .map(|index| {
                 let (expression, answer, source) = &expressions[index];
                 serde_json::json!({
@@ -801,7 +849,7 @@ fn build_template_paper(
                 })
             })
             .collect();
-        let judge_items: Vec<Value> = (0..5)
+        let judge_items: Vec<Value> = (0..judge_count)
             .map(|index| {
                 let (expression, answer, source) = &expressions[index + 5];
                 let is_correct = index % 2 == 0;
@@ -821,7 +869,7 @@ fn build_template_paper(
                 })
             })
             .collect();
-        let choice_items: Vec<Value> = (0..5)
+        let choice_items: Vec<Value> = (0..choice_count)
             .map(|index| {
                 let (expression, answer, source) = &expressions[index + 10];
                 let correct_index = index % 4;
@@ -857,22 +905,23 @@ fn build_template_paper(
                 })
             })
             .collect();
-        let calc_slice = &expressions[15..25];
-        let calc_stem = calc_slice
-            .chunks(4)
-            .map(|row| {
-                row.iter()
-                    .map(|(expression, _, _)| format!("{expression}＝　　　"))
-                    .collect::<Vec<_>>()
-                    .join("    ")
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        let calc_answers = calc_slice
+        let calc_start = 15;
+        let calc_end = (calc_start + calc_count).min(expressions.len());
+        let calc_items: Vec<Value> = expressions[calc_start..calc_end]
             .iter()
-            .map(|(_, answer, _)| answer.clone())
-            .collect::<Vec<_>>()
-            .join("；");
+            .enumerate()
+            .map(|(index, (expression, answer, source))| {
+                serde_json::json!({
+                    "id": format!("4-{}", index + 1),
+                    "stem": format!("{}. {}＝　　　", index + 1, expression),
+                    "options": [],
+                    "answer": answer,
+                    "analysis": format!("{}={}; 来源：{}", expression, answer, source),
+                    "score": 3,
+                    "knowledgePoints": ["口算", "混合运算"]
+                })
+            })
+            .collect();
         let public_source_count = verified_math.len().min(24);
         serde_json::json!({
             "meta": {
@@ -913,15 +962,7 @@ fn build_template_paper(
                     "type": "calc",
                     "title": "四、计算题（共30分）",
                     "score": 30,
-                    "items": [{
-                        "id":"4-1",
-                        "stem": format!("1. 计算下面各题。\n{}", calc_stem),
-                        "options":[],
-                        "answer": calc_answers,
-                        "analysis":"所有算式均经本地表达式求值器验算",
-                        "score":30,
-                        "knowledgePoints":["口算", "混合运算"]
-                    }]
+                    "items": calc_items
                 },
                 {
                     "type": "problem",
@@ -950,9 +991,11 @@ fn build_template_paper(
                     "title": "一、积累与运用（30分）",
                     "score": 30,
                     "items": [
-                        {"id":"1-1","stem":"1. 看拼音写词语（10分）\n（根据本单元字词默写，模板占位）","options":[],"answer":"略","analysis":"","score":10,"knowledgePoints": sample_points.get(0).cloned().into_iter().collect::<Vec<_>>()},
-                        {"id":"1-2","stem":"2. 选字填空 / 近反义词（10分）","options":[],"answer":"略","analysis":"","score":10,"knowledgePoints":[]},
-                        {"id":"1-3","stem":"3. 按课文内容填空（10分）","options":[],"answer":"略","analysis":"","score":10,"knowledgePoints":[]}
+                        {"id":"1-1","stem":"1. 看拼音写词语（6分）\n（根据本单元字词默写，模板占位）","options":[],"answer":"略","analysis":"","score":6,"knowledgePoints": sample_points.get(0).cloned().into_iter().collect::<Vec<_>>()},
+                        {"id":"1-2","stem":"2. 选字填空（6分）","options":[],"answer":"略","analysis":"","score":6,"knowledgePoints":[]},
+                        {"id":"1-3","stem":"3. 写出近义词或反义词（6分）","options":[],"answer":"略","analysis":"","score":6,"knowledgePoints":[]},
+                        {"id":"1-4","stem":"4. 按要求写词语（6分）","options":[],"answer":"略","analysis":"","score":6,"knowledgePoints":[]},
+                        {"id":"1-5","stem":"5. 按课文内容填空（6分）","options":[],"answer":"略","analysis":"","score":6,"knowledgePoints":[]}
                     ]
                 },
                 {
@@ -960,8 +1003,10 @@ fn build_template_paper(
                     "title": "二、阅读理解（45分）",
                     "score": 45,
                     "items": [
-                        {"id":"2-1","stem":"1. 课内阅读（20分）\n阅读本单元课文选段，完成练习。（模板：请用 AI 生成完整选段与题目）","options":[],"answer":"略","analysis":"","score":20,"knowledgePoints":[]},
-                        {"id":"2-2","stem":"2. 课外阅读（25分）\n阅读短文，完成练习。","options":[],"answer":"略","analysis":"","score":25,"knowledgePoints":[]}
+                        {"id":"2-1","stem":"1. 课内阅读：联系上下文理解词语。","options":[],"answer":"略","analysis":"","score":11,"knowledgePoints":[]},
+                        {"id":"2-2","stem":"2. 课内阅读：根据选段内容填空。","options":[],"answer":"略","analysis":"","score":11,"knowledgePoints":[]},
+                        {"id":"2-3","stem":"3. 课外阅读：概括短文主要内容。","options":[],"answer":"略","analysis":"","score":11,"knowledgePoints":[]},
+                        {"id":"2-4","stem":"4. 课外阅读：结合生活实际谈一谈。","options":[],"answer":"略","analysis":"","score":12,"knowledgePoints":[]}
                     ]
                 },
                 {
@@ -1066,6 +1111,32 @@ fn scale_template_scores(mut paper: Value, target_score: u32) -> Value {
 #[cfg(test)]
 mod offline_bank_tests {
     use super::*;
+    use crate::knowledge::{KnowledgePack, SourceInfo};
+
+    fn oral_request() -> GenerateRequest {
+        GenerateRequest {
+            subject: "math".into(),
+            edition: "beishida".into(),
+            grade: 3,
+            semester: "shang".into(),
+            exam_type: "oral".into(),
+            unit_id: None,
+            difficulty: "标准".into(),
+            total_score: 100,
+            duration_min: 15,
+            knowledge_path: String::new(),
+            selected_lessons: vec![],
+            difficulty_ratio: generate::DifficultyRatio::default(),
+            mix_bank: false,
+            use_school_bank: false,
+            school_bank_snippets: vec![],
+            public_bank_snippets: vec![],
+            template_id: Some("math-oral-dense".into()),
+            structure_override: None,
+            structure_mode: "adaptive".into(),
+            template_hints: vec![],
+        }
+    }
 
     #[test]
     fn offline_math_bank_has_enough_verified_expressions() {
@@ -1086,6 +1157,54 @@ mod offline_bank_tests {
         let crawled = vec![("432÷4".into(), "108".into(), "公开来源".into())];
         let items = offline_math_expressions(3, &crawled);
         assert_eq!(items[0], crawled[0]);
+    }
+
+    #[test]
+    fn offline_oral_template_has_independent_items() {
+        let req = oral_request();
+        let pack = KnowledgePack {
+            subject: "math".into(),
+            edition: "beishida".into(),
+            grade: 3,
+            semester: "shang".into(),
+            title: "测试教材".into(),
+            source: SourceInfo::default(),
+            units: vec![],
+            exam_hints: vec![],
+        };
+        let paper = build_template_paper(&req, &pack, &[]);
+        assert_eq!(paper["sections"][0]["items"].as_array().unwrap().len(), 24);
+        assert!(paper["sections"][0]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["stem"].as_str().unwrap().matches('＝').count() == 1));
+        generate::validate_question_count(&paper, &req).unwrap();
+        contracts::validate_exam_paper(&paper).unwrap();
+    }
+
+    #[test]
+    fn offline_math_calc_template_is_split_into_items() {
+        let mut req = oral_request();
+        req.exam_type = "unit".into();
+        req.total_score = 100;
+        let pack = KnowledgePack {
+            subject: "math".into(),
+            edition: "beishida".into(),
+            grade: 3,
+            semester: "shang".into(),
+            title: "测试教材".into(),
+            source: SourceInfo::default(),
+            units: vec![],
+            exam_hints: vec![],
+        };
+        let paper = build_template_paper(&req, &pack, &[]);
+        assert_eq!(paper["sections"][3]["items"].as_array().unwrap().len(), 8);
+        assert!(paper["sections"][3]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["stem"].as_str().unwrap().matches('＝').count() == 1));
     }
 
     #[test]

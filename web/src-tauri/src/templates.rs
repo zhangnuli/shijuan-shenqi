@@ -163,10 +163,10 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 40,
             total_score: 100,
             sections: vec![
-                sec("fill", "一、填空题（共20分）", 20, 5, "每空2～4分"),
-                sec("judge", "二、判断题（共10分）", 10, 5, "√或×"),
-                sec("choice", "三、选择题（共10分）", 10, 5, "四选一"),
-                sec("calc", "四、计算题（共30分）", 30, 2, "口算+脱式"),
+                sec("fill", "一、填空题（共20分）", 20, 6, "每空2～4分"),
+                sec("judge", "二、判断题（共10分）", 10, 6, "√或×"),
+                sec("choice", "三、选择题（共10分）", 10, 6, "四选一"),
+                sec("calc", "四、计算题（共30分）", 30, 8, "每个算式单独成题"),
                 sec("problem", "五、解决问题（共30分）", 30, 3, "应用题"),
             ],
             process_stages: vec![],
@@ -186,8 +186,8 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 15,
             total_score: 100,
             sections: vec![
-                sec("calc", "一、直接写得数（共60分）", 60, 1, "20～30 小题口算"),
-                sec("calc", "二、脱式/简便（共25分）", 25, 4, "混合运算"),
+                sec("calc", "一、直接写得数（共60分）", 60, 24, "20～30 道独立口算题"),
+                sec("calc", "二、脱式/简便（共25分）", 25, 5, "每题一个算式"),
                 sec("problem", "三、小小应用（共15分）", 15, 2, "一句话应用"),
             ],
             process_stages: vec![],
@@ -207,9 +207,9 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 20,
             total_score: 50,
             sections: vec![
-                sec("fill", "一、填空（共10分）", 10, 4, ""),
-                sec("calc", "二、计算（共25分）", 25, 2, ""),
-                sec("problem", "三、解决问题（共15分）", 15, 2, ""),
+                sec("fill", "一、填空（共10分）", 10, 5, ""),
+                sec("calc", "二、计算（共25分）", 25, 8, "每题一个算式"),
+                sec("problem", "三、解决问题（共15分）", 15, 3, ""),
             ],
             process_stages: vec![],
             prompt_hints: vec!["一课时可完成".into()],
@@ -228,9 +228,9 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 25,
             total_score: 50,
             sections: vec![
-                sec("mixed", "一、基础练（共20分）", 20, 5, "填空或选择"),
-                sec("calc", "二、巩固练（共20分）", 20, 2, "计算"),
-                sec("problem", "三、想一想（共10分）", 10, 1, "稍难"),
+                sec("mixed", "一、基础练（共20分）", 20, 6, "填空或选择"),
+                sec("calc", "二、巩固练（共20分）", 20, 6, "每题一个算式"),
+                sec("problem", "三、想一想（共10分）", 10, 3, "稍难"),
             ],
             process_stages: vec![],
             prompt_hints: vec!["控制书写负担".into()],
@@ -249,12 +249,12 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 60,
             total_score: 100,
             sections: vec![
-                sec("fill", "一、填空题（共20分）", 20, 5, ""),
-                sec("judge", "二、判断题（共10分）", 10, 5, ""),
-                sec("choice", "三、选择题（共10分）", 10, 5, ""),
-                sec("calc", "四、计算题（共30分）", 30, 2, ""),
+                sec("fill", "一、填空题（共20分）", 20, 6, ""),
+                sec("judge", "二、判断题（共10分）", 10, 6, ""),
+                sec("choice", "三、选择题（共10分）", 10, 6, ""),
+                sec("calc", "四、计算题（共30分）", 30, 8, "每题一个算式"),
                 sec("operation", "五、操作题（共10分）", 10, 2, "画图/测量"),
-                sec("problem", "六、解决问题（共20分）", 20, 2, ""),
+                sec("problem", "六、解决问题（共20分）", 20, 3, ""),
             ],
             process_stages: vec![],
             prompt_hints: vec!["覆盖前半学期".into()],
@@ -273,10 +273,10 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 45,
             total_score: 100,
             sections: vec![
-                sec("pinyin", "一、拼音字词（共20分）", 20, 3, ""),
-                sec("choice", "二、选择填空（共20分）", 20, 5, ""),
-                sec("mixed", "三、课内积累（共20分）", 20, 3, ""),
-                sec("reading", "四、阅读理解（共25分）", 25, 2, "课内+课外可合并出"),
+                sec("pinyin", "一、拼音字词（共20分）", 20, 6, ""),
+                sec("choice", "二、选择填空（共20分）", 20, 6, ""),
+                sec("mixed", "三、课内积累（共20分）", 20, 6, ""),
+                sec("reading", "四、阅读理解（共25分）", 25, 4, "课内+课外可合并出"),
                 sec("writing", "五、小练笔（共15分）", 15, 1, ""),
             ],
             process_stages: vec![],
@@ -296,9 +296,9 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 15,
             total_score: 50,
             sections: vec![
-                sec("pinyin", "一、看拼音写词语（共20分）", 20, 1, ""),
-                sec("fill", "二、选字填空/近反义（共15分）", 15, 4, ""),
-                sec("mixed", "三、形近字组词（共15分）", 15, 5, ""),
+                sec("pinyin", "一、看拼音写词语（共20分）", 20, 8, ""),
+                sec("fill", "二、选字填空/近反义（共15分）", 15, 8, ""),
+                sec("mixed", "三、形近字组词（共15分）", 15, 8, ""),
             ],
             process_stages: vec![],
             prompt_hints: vec!["无长阅读".into()],
@@ -317,10 +317,10 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             duration_min: 40,
             total_score: 100,
             sections: vec![
-                sec("fill", "一、词汇（共20分）", 20, 5, ""),
-                sec("choice", "二、选择（共20分）", 20, 5, ""),
-                sec("mixed", "三、句型转换/填空（共20分）", 20, 4, ""),
-                sec("reading", "四、阅读（共25分）", 25, 1, "短文适龄"),
+                sec("fill", "一、词汇（共20分）", 20, 6, ""),
+                sec("choice", "二、选择（共20分）", 20, 6, ""),
+                sec("mixed", "三、句型转换/填空（共20分）", 20, 6, ""),
+                sec("reading", "四、阅读（共25分）", 25, 4, "短文适龄"),
                 sec("writing", "五、写话（共15分）", 15, 1, ""),
             ],
             process_stages: vec![],
@@ -341,7 +341,7 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             total_score: 50,
             sections: vec![
                 sec("fill", "一、词汇（共20分）", 20, 6, ""),
-                sec("choice", "二、选择（共15分）", 15, 5, ""),
+                sec("choice", "二、选择（共15分）", 15, 6, ""),
                 sec("mixed", "三、完成句子（共15分）", 15, 4, ""),
             ],
             process_stages: vec![],
@@ -362,8 +362,8 @@ pub fn bundled_templates() -> Vec<PaperTemplate> {
             total_score: 50,
             sections: vec![
                 sec("mixed", "一、同类基础（共20分）", 20, 4, ""),
-                sec("calc", "二、变式巩固（共20分）", 20, 3, ""),
-                sec("problem", "三、综合一题（共10分）", 10, 1, ""),
+                sec("calc", "二、变式巩固（共20分）", 20, 5, ""),
+                sec("problem", "三、综合一题（共10分）", 10, 2, ""),
             ],
             process_stages: vec![],
             prompt_hints: vec!["紧扣错因知识点".into(), "禁止照搬原题数字".into()],
@@ -538,6 +538,18 @@ pub fn apply_paper_template(
         } else {
             2
         };
+        let calc_bank = [
+            ("6×7", "42"),
+            ("48÷6", "8"),
+            ("25+36", "61"),
+            ("72-29", "43"),
+            ("8×9", "72"),
+            ("96÷8", "12"),
+            ("125+375", "500"),
+            ("600-245", "355"),
+            ("24×5", "120"),
+            ("360÷9", "40"),
+        ];
         let mut items = Vec::new();
         for i in 0..n {
             let kp = points
@@ -545,12 +557,7 @@ pub fn apply_paper_template(
                 .cloned()
                 .unwrap_or_else(|| "本课知识点".into());
             let stem = match spec.r#type.as_str() {
-                "calc" if i == 0 && n <= 3 => {
-                    format!(
-                        "{}. 计算（模板占位，可用智能组卷填充）\n6×7＝　　  48÷6＝　　  25+36＝",
-                        i + 1
-                    )
-                }
+                "calc" => format!("{}. {}＝　　　", i + 1, calc_bank[i % calc_bank.len()].0),
                 "judge" => format!("{}. 下列说法正确。（　　）", i + 1),
                 "choice" => format!("{}. 请选择正确答案。（　　）", i + 1),
                 "problem" => format!(
@@ -573,8 +580,8 @@ pub fn apply_paper_template(
                 "√"
             } else if spec.r#type == "choice" {
                 "A"
-            } else if spec.r#type == "calc" && i == 0 {
-                "42；8；61"
+            } else if spec.r#type == "calc" {
+                calc_bank[i % calc_bank.len()].1
             } else {
                 "（模板占位）"
             };

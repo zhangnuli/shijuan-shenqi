@@ -100,6 +100,122 @@ pub fn exam_type_label(t: &str) -> &'static str {
     }
 }
 
+/// 按学科与卷型给出每道大题的最低小题数。
+///
+/// 这里的数量是“items 数组中的独立小题”，不是题干里拼接的算式数量。
+pub fn question_count_rule(req: &GenerateRequest) -> Vec<usize> {
+    let base: &[usize] = match (req.subject.as_str(), req.exam_type.as_str()) {
+        ("math", "oral") => &[24],
+        ("math", "lesson") => &[5, 5, 8, 3],
+        ("math", "homework") => &[6, 6, 3],
+        ("math", "redrill") => &[4, 5, 2],
+        ("math", "midterm" | "final") => &[6, 6, 6, 8, 2, 3],
+        ("math", _) => &[6, 6, 6, 8, 3],
+        ("chinese", "oral") => &[8, 8, 8],
+        ("chinese", "lesson") => &[6, 6, 4],
+        ("chinese", "homework") => &[7, 7, 1],
+        ("chinese", "redrill") => &[6, 5, 2],
+        ("chinese", "midterm" | "final") => &[8, 5, 5, 1],
+        ("chinese", _) => &[6, 6, 6, 4, 1],
+        ("english", "oral") => &[10, 8, 4],
+        ("english", "lesson") => &[6, 6, 4],
+        ("english", "homework") => &[7, 7, 3],
+        ("english", "redrill") => &[6, 5, 2],
+        ("english", "midterm" | "final") => &[7, 6, 5, 1],
+        ("english", _) => &[6, 6, 6, 4, 1],
+        (_, "oral") => &[8, 8, 8],
+        _ => &[6, 6, 6, 4, 1],
+    };
+
+    let scale = (req.total_score.max(1) as f64 / 100.0).clamp(0.5, 1.5);
+    base.iter()
+        .map(|count| {
+            let scaled = (*count as f64 * scale).round() as usize;
+            if req.subject == "math" && req.exam_type == "oral" {
+                scaled.clamp(20, 30)
+            } else {
+                scaled.max(1)
+            }
+        })
+        .collect()
+}
+
+pub fn section_item_count(req: &GenerateRequest, section_index: usize) -> Option<usize> {
+    question_count_rule(req).get(section_index).copied()
+}
+
+pub fn question_count_hint(req: &GenerateRequest) -> String {
+    let counts = question_count_rule(req);
+    let sections = counts
+        .iter()
+        .enumerate()
+        .map(|(index, count)| format!("第{}大题至少{}道独立小题", index + 1, count))
+        .collect::<Vec<_>>()
+        .join("；");
+    if req.subject == "math" && req.exam_type == "oral" {
+        format!(
+            "题量硬约束：{}；其中口算专项总共必须有 20～30 道独立口算题，不能把多道算式放在同一个 items 或 stem 中。",
+            sections
+        )
+    } else {
+        format!(
+            "题量硬约束：{}。每道大题的 items 数组长度不得低于要求。",
+            sections
+        )
+    }
+}
+
+/// 校验每道大题的最低题量，并拦截“一个小题 stem 塞多道计算”的输出。
+pub fn validate_question_count(value: &Value, req: &GenerateRequest) -> Result<(), String> {
+    let sections = value
+        .get("sections")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "试卷无 sections，无法校验题量".to_string())?;
+    let counts = question_count_rule(req);
+    if sections.len() < counts.len() {
+        return Err(format!(
+            "大题数量不足：至少需要 {} 道大题，实际 {} 道",
+            counts.len(),
+            sections.len()
+        ));
+    }
+
+    for (section_index, required) in counts.iter().enumerate() {
+        let section = &sections[section_index];
+        let items = section
+            .get("items")
+            .and_then(Value::as_array)
+            .ok_or_else(|| format!("第 {} 大题没有 items", section_index + 1))?;
+        if items.len() < *required {
+            return Err(format!(
+                "第 {} 大题题量不足：至少需要 {} 道独立小题，实际 {} 道",
+                section_index + 1,
+                required,
+                items.len()
+            ));
+        }
+
+        let section_type = section
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if section_type == "calc" || (req.subject == "math" && req.exam_type == "oral") {
+            for (item_index, item) in items.iter().enumerate() {
+                let stem = item.get("stem").and_then(Value::as_str).unwrap_or("");
+                let equals_count = stem.matches('＝').count() + stem.matches('=').count();
+                if equals_count > 1 {
+                    return Err(format!(
+                        "第 {} 大题第 {} 小题包含多道计算，请拆成独立小题",
+                        section_index + 1,
+                        item_index + 1
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 /// 是否按「单单元/课时」收窄命题范围
 fn is_unit_scoped(exam_type: &str) -> bool {
     matches!(
@@ -178,6 +294,7 @@ pub fn build_prompt(req: &GenerateRequest, pack: &KnowledgePack) -> (String, Str
         "难度配比：基础约{}%、中等约{}%、拔高约{}%（按题量大致分配）",
         r.basic, r.medium, r.hard
     );
+    let count_hint = question_count_hint(req);
 
     let mix_hint = if req.mix_bank {
         "组卷策略：题库混组——计算题尽量给出可验算的明确算式与唯一数值答案；应用题数量关系清晰；避免无法判定对错的开放表述。"
@@ -283,7 +400,9 @@ JSON 结构必须如下：
 9. 题号从 1 连续编号，stem 不要重复写大题号
 10. {ratio_hint}；各难度在全卷大致均匀分布，拔高题优先放计算/解决问题末尾
 11. {mix_hint}
-12. 若用户指定了「重点课时」，命题范围必须优先覆盖这些课时，不得偏离"#,
+12. 若用户指定了「重点课时」，命题范围必须优先覆盖这些课时，不得偏离
+13. {count_hint}
+14. 计算题、口算题、竖式题、脱式题必须拆成独立小题：一个 items 元素只能有一道题或一个算式；禁止在同一个 stem 或 answer 中拼接多道算式"#,
         subject_cn = subject_cn,
         edition_cn = edition_cn,
         difficulty = req.difficulty,
@@ -295,6 +414,7 @@ JSON 结构必须如下：
         duration = req.duration_min,
         ratio_hint = ratio_hint,
         mix_hint = mix_hint,
+        count_hint = count_hint,
     );
 
     let unit_line = if is_unit_scoped(&req.exam_type) {
@@ -467,15 +587,30 @@ pub fn generate_with_ai(
     req: &GenerateRequest,
     pack: &KnowledgePack,
 ) -> Result<Value, String> {
-    let (system, user) = build_prompt(req, pack);
-    let raw = chat_completion(cfg, &system, &user)?;
-    let json_str = extract_json(&raw)?;
-    let value: Value =
-        serde_json::from_str(&json_str).map_err(|e| format!("试卷 JSON 无效: {e}\n{json_str}"))?;
-    // 口算/脱式等可验算题：答案算错时用程序结果自动修正，避免「3/8=0.375」类误杀整卷
-    let (value, _math_fixed) = repair_math_answers(&value);
-    validate_exam_output(&value, "试卷")?;
-    Ok(value)
+    let (system, initial_user) = build_prompt(req, pack);
+    let mut user = initial_user.clone();
+    for attempt in 0..2 {
+        let raw = chat_completion(cfg, &system, &user)?;
+        let json_str = extract_json(&raw)?;
+        let value: Value = serde_json::from_str(&json_str)
+            .map_err(|e| format!("试卷 JSON 无效: {e}\n{json_str}"))?;
+        // 口算/脱式等可验算题：答案算错时用程序结果自动修正，避免「3/8=0.375」类误杀整卷
+        let (value, _math_fixed) = repair_math_answers(&value);
+
+        if let Err(count_error) = validate_question_count(&value, req) {
+            if attempt == 0 {
+                user = format!(
+                    "{initial_user}\n\n【题量校验未通过，必须完整重生成】{count_error}\n请严格按照系统要求补足题量，并重新输出完整 JSON；不要只输出新增题目。"
+                );
+                continue;
+            }
+            return Err(format!("试卷题量校验失败：{count_error}"));
+        }
+
+        validate_exam_output(&value, "试卷")?;
+        return Ok(value);
+    }
+    Err("试卷生成失败：未得到满足题量要求的结果".into())
 }
 
 /// 所有完整试卷输出共用的合同与质检入口。
@@ -730,9 +865,12 @@ mod tests {
     #[test]
     fn prompt_has_three_structure_modes() {
         let p = pack();
-        let (_, strict_user) = build_prompt(&request("strict"), &p);
+        let (strict_system, strict_user) = build_prompt(&request("strict"), &p);
         assert!(strict_user.contains("严格模板模式"));
         assert!(strict_user.contains("不可擅自合并或删减"));
+        assert!(strict_system.contains("题量硬约束"));
+        assert!(strict_system.contains("第1大题至少6道独立小题"));
+        assert!(strict_system.contains("一个 items 元素只能有一道题或一个算式"));
 
         let (_, adaptive_user) = build_prompt(&request("adaptive"), &p);
         assert!(adaptive_user.contains("智能结构模式"));
@@ -741,6 +879,59 @@ mod tests {
         let (_, free_user) = build_prompt(&request("free"), &p);
         assert!(free_user.contains("自由组卷模式"));
         assert!(free_user.contains("自行设计最合适的大题组合"));
+    }
+
+    #[test]
+    fn question_count_rules_scale_with_score() {
+        let mut unit = request("adaptive");
+        assert_eq!(question_count_rule(&unit), vec![6, 6, 6, 8, 3]);
+        unit.total_score = 50;
+        assert_eq!(question_count_rule(&unit), vec![3, 3, 3, 4, 2]);
+
+        unit.subject = "math".into();
+        unit.exam_type = "oral".into();
+        unit.total_score = 100;
+        assert_eq!(question_count_rule(&unit), vec![24]);
+        unit.total_score = 50;
+        assert_eq!(question_count_rule(&unit), vec![20]);
+    }
+
+    #[test]
+    fn question_count_validation_rejects_short_and_bundled_calc() {
+        let req = request("adaptive");
+        let counts = question_count_rule(&req);
+        let types = ["fill", "judge", "choice", "calc", "problem"];
+        let sections = counts
+            .iter()
+            .enumerate()
+            .map(|(section_index, count)| {
+                let items = (0..*count)
+                    .map(|item_index| {
+                        let stem = if section_index == 3 {
+                            format!("{}+1＝", item_index + 1)
+                        } else {
+                            format!("第{}题", item_index + 1)
+                        };
+                        serde_json::json!({"stem": stem})
+                    })
+                    .collect::<Vec<_>>();
+                serde_json::json!({"type": types[section_index], "items": items})
+            })
+            .collect::<Vec<_>>();
+        let paper = serde_json::json!({"sections": sections});
+        assert!(validate_question_count(&paper, &req).is_ok());
+
+        let mut short = paper.clone();
+        short["sections"][0]["items"] = serde_json::json!([]);
+        assert!(validate_question_count(&short, &req)
+            .unwrap_err()
+            .contains("第 1 大题题量不足"));
+
+        let mut bundled = paper;
+        bundled["sections"][3]["items"][0]["stem"] = serde_json::json!("1+1＝；2+2＝");
+        assert!(validate_question_count(&bundled, &req)
+            .unwrap_err()
+            .contains("拆成独立小题"));
     }
 
     #[test]
