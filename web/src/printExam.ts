@@ -5,7 +5,6 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { openPath } from '@tauri-apps/plugin-opener'
 
 let activeFrame: HTMLIFrameElement | null = null
 
@@ -108,7 +107,7 @@ export async function renderHtmlPdf(html: string): Promise<PdfPreviewResult | nu
 }
 
 export async function openPdfFile(path: string): Promise<void> {
-  await openPath(path)
+  await invoke('open_print_pdf', { path })
 }
 
 /**

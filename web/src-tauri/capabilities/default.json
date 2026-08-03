@@ -7,14 +7,6 @@
     "core:default",
     "dialog:default",
     "opener:default",
-    {
-      "identifier": "opener:allow-open-path",
-      "scope": {
-        "allow": [
-          { "path": "$TEMP/shijuan-shenqi-print/**" }
-        ]
-      }
-    },
     "fs:default",
     "fs:allow-write-file",
     "fs:allow-write-text-file",

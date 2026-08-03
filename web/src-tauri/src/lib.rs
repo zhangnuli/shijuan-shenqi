@@ -50,6 +50,7 @@ use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 use spec_table::{build_spec_table, SpecTable};
+use std::path::PathBuf;
 use templates::{
     apply_paper_template, delete_user_template, export_template_json, get_template,
     import_template, list_all_templates, save_template_from_paper, template_structure_line,
@@ -613,6 +614,26 @@ async fn render_html_pdf(html: String) -> Result<PdfPreviewResult, String> {
     })
     .await
     .map_err(|e| format!("PDF 预览任务失败: {e}"))?
+}
+
+/// 由后端受控打开临时打印 PDF，避免前端 opener 的路径 scope 误拦截。
+#[tauri::command]
+fn open_print_pdf(path: String) -> Result<(), String> {
+    let requested = PathBuf::from(&path);
+    let print_dir = std::env::temp_dir().join("shijuan-shenqi-print");
+    let allowed_dir = print_dir
+        .canonicalize()
+        .map_err(|e| format!("无法解析打印目录: {e}"))?;
+    let file = requested
+        .canonicalize()
+        .map_err(|e| format!("无法解析 PDF 路径: {e}"))?;
+    if file.extension().and_then(|ext| ext.to_str()).map(|ext| ext.eq_ignore_ascii_case("pdf")) != Some(true)
+        || !file.starts_with(&allowed_dir)
+    {
+        return Err("只允许打开应用临时打印目录中的 PDF 文件".into());
+    }
+    tauri_plugin_opener::open_path(&file, None::<&str>)
+        .map_err(|e| format!("打开 PDF 失败: {e}"))
 }
 
 /// 解析自有电子书阅读页链接（resId/bookId/contributeId）
@@ -1298,6 +1319,7 @@ pub fn run() {
             verify_math_paper,
             print_html_document,
             render_html_pdf,
+            open_print_pdf,
             ebook_parse_url,
             ebook_catalog,
             ebook_unit_pages,
