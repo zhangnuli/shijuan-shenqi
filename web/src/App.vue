@@ -2720,7 +2720,8 @@ async function loadEbookCatalog() {
     }
     ElMessage.success(`已加载《${cat.bookName || '电子书'}》目录（${cat.items?.length || 0} 项）`)
   } catch (e) {
-    ElMessage.error(`加载目录失败：${e}`)
+    ebookCatalog.value = null
+    ElMessage.warning(`目录暂不可用，将按当前 bookId 直接拉取页图：${e}`)
   } finally {
     ebookLoading.value = false
   }

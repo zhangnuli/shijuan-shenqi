@@ -123,8 +123,9 @@ fn post_form(base: &str, path: &str, form: &[(&str, &str)]) -> Result<Value, Str
         .form(form)
         .send()
         .map_err(|e| format!("请求失败 {url}: {e}"))?;
-    if !resp.status().is_success() {
-        return Err(format!("接口 HTTP {}: {url}", resp.status()));
+    let http_status = resp.status();
+    if !http_status.is_success() {
+        return Err(format!("接口 HTTP {http_status}: {url}"));
     }
     let v: Value = resp
         .json()
@@ -135,7 +136,7 @@ fn post_form(base: &str, path: &str, form: &[(&str, &str)]) -> Result<Value, Str
             .get("message")
             .and_then(|x| x.as_str())
             .unwrap_or("未知错误");
-        return Err(format!("接口返回失败: {msg}"));
+        return Err(format!("接口返回失败 [{path}] HTTP {http_status}: {msg}"));
     }
     Ok(v)
 }
@@ -308,6 +309,9 @@ pub fn fetch_unit_pages(
     contribute_id: &str,
     max_pages: u32,
 ) -> Result<EbookUnitPages, String> {
+    if res_id.is_empty() {
+        return Err("resId 为空".into());
+    }
     if book_id.is_empty() {
         return Err("bookId 为空".into());
     }
@@ -316,29 +320,46 @@ pub fn fetch_unit_pages(
     }
     let max_pages = max_pages.clamp(1, 80);
 
-    let catalog = fetch_catalog(base, res_id)?;
-    // 主目录一般 deep=5 为单元
-    let units: Vec<&EbookCatalogItem> = catalog
-        .items
-        .iter()
-        .filter(|it| it.deep == "5" || it.deep.is_empty())
-        .collect();
-    let units = if units.is_empty() {
-        catalog.items.iter().collect::<Vec<_>>()
-    } else {
-        units
-    };
-
-    let pos = units
-        .iter()
-        .position(|u| u.book_id == book_id)
-        .ok_or_else(|| "目录中未找到该 bookId，请确认链接与 resId 是否同一本书".to_string())?;
-
-    let unit_name = units[pos].cata_name.clone();
     let start = fetch_page_anchor(base, book_id, contribute_id)?;
 
-    let end_exclusive = if pos + 1 < units.len() {
-        match fetch_page_anchor(base, &units[pos + 1].book_id, contribute_id) {
+    // 目录接口偶尔会对仍可读的资源返回“查询失败”。页图接口已经包含
+    // 起始页和全书页数，因此目录只能作为名称和下一单元边界的增强信息。
+    let catalog = match fetch_catalog(base, res_id) {
+        Ok(catalog) => Some(catalog),
+        Err(error) => {
+            log::warn!("电子书目录不可用，按当前 bookId 继续拉取页图: {error}");
+            None
+        }
+    };
+
+    let (book_name, subject_name, unit_name, next_book_id) = match catalog {
+        Some(catalog) => {
+            // 主目录一般 deep=5 为单元。
+            let units: Vec<&EbookCatalogItem> = catalog
+                .items
+                .iter()
+                .filter(|it| it.deep == "5" || it.deep.is_empty())
+                .collect();
+            let units = if units.is_empty() {
+                catalog.items.iter().collect::<Vec<_>>()
+            } else {
+                units
+            };
+            let pos = units.iter().position(|u| u.book_id == book_id);
+            let unit_name = pos
+                .map(|index| units[index].cata_name.clone())
+                .filter(|name| !name.is_empty())
+                .unwrap_or_else(|| "当前单元".into());
+            let next_book_id = pos
+                .and_then(|index| units.get(index + 1))
+                .map(|item| item.book_id.clone());
+            (catalog.book_name, catalog.subject_name, unit_name, next_book_id)
+        }
+        None => (String::new(), String::new(), "当前单元".into(), None),
+    };
+
+    let end_exclusive = if let Some(next_book_id) = next_book_id {
+        match fetch_page_anchor(base, &next_book_id, contribute_id) {
             Ok(next) if next.index > start.index => next.index,
             _ => (start.total + 1).max(start.index + 1),
         }
@@ -370,8 +391,8 @@ pub fn fetch_unit_pages(
     }
 
     Ok(EbookUnitPages {
-        book_name: catalog.book_name,
-        subject_name: catalog.subject_name,
+        book_name,
+        subject_name,
         unit_name,
         book_id: book_id.to_string(),
         start_page: start.index,
