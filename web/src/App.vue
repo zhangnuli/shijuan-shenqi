@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Setting,
@@ -8,7 +7,6 @@ import {
   MagicStick,
   Download,
   Refresh,
-  Link,
   Upload,
   Printer,
   ArrowDown,
@@ -100,7 +98,7 @@ const ebookDialogVisible = ref(false)
 const ebookLoading = ref(false)
 const ebookFetchingPages = ref(false)
 const ebookForm = reactive({
-  url: 'https://www.100875.com.cn/show/eBookAndTeacher.html?resId=b613783f20cf42c689844433cce53c81&bookId=120170718181613001800&firstNum=a9f3f20e2e5749a3a94140ae57f883e0&contributeId=9220',
+  url: 'https://www.100875.com.cn/show/resourceDetail_eBookAndTeacher.html?resId=ef0954d2467f4c199eb0722d93832cd5&type=SYN&contributeId=9220&tp=Ebook',
   baseUrl: 'https://www.100875.com.cn',
   resId: '',
   bookId: '',
@@ -448,30 +446,6 @@ const selectedUnit = computed(() =>
   unitOptions.value.find((u) => u.id === form.unitId) || null,
 )
 
-async function openExternal(url: string) {
-  try {
-    await openUrl(url)
-  } catch {
-    window.open(url, '_blank')
-  }
-}
-
-async function openSmartedu(kind: 'home' | 'classroom' | 'material' | 'elec') {
-  const s = currentPack.value?.source
-  const map: Record<string, string> = {
-    home: s?.platformUrl || 'https://basic.smartedu.cn/',
-    classroom: s?.classroomUrl || 'https://basic.smartedu.cn/syncClassroom',
-    material: s?.materialUrl || 'https://basic.smartedu.cn/tchMaterial',
-    elec: s?.elecEduUrl || 'https://basic.smartedu.cn/elecEdu',
-  }
-  await openExternal(map[kind])
-}
-
-async function openCatalogRef() {
-  const url = currentPack.value?.source?.catalogRef || 'https://www.dzkbw.org/'
-  await openExternal(url)
-}
-
 const browserEditionOptions = computed(() => {
   if (browserSubject.value === 'math') {
     return [
@@ -607,14 +581,6 @@ function copyBrowserAllText() {
     () => ElMessage.success('全册课标目录已复制'),
     () => ElMessage.warning('复制失败'),
   )
-}
-
-async function openBrowserCatalogSource() {
-  const url =
-    browserPack.value?.source?.catalogRef ||
-    browserPack.value?.source?.catalogSite ||
-    'https://www.dzkbw.org/'
-  await openExternal(url)
 }
 
 function selectBrowserPack(c: CatalogItem) {
@@ -2942,8 +2908,6 @@ onMounted(loadAll)
         <el-button text @click="openHistory">历史记录</el-button>
         <el-button text type="primary" @click="openCurriculumBrowser">查看课标</el-button>
         <el-button text type="primary" :icon="Printer" @click="openEbookPrintDialog">打印电子书</el-button>
-        <el-button text :icon="Link" @click="openSmartedu('classroom')">同步课堂</el-button>
-        <el-button text :icon="Link" @click="openCatalogRef">教材目录</el-button>
         <el-button text @click="exportRuntimeLog">导出日志</el-button>
         <el-button text :loading="updateChecking" @click="checkAppUpdate(true)">
           {{ updateChecking && updateProgress > 0 ? `更新 ${updateProgress}%` : '检查更新' }}
@@ -4068,7 +4032,6 @@ onMounted(loadAll)
               </div>
             </div>
             <div class="cb-head-actions">
-              <el-button size="small" plain :icon="Link" @click="openBrowserCatalogSource">打开网站目录</el-button>
               <el-button size="small" plain @click="copyBrowserAllText">复制全册</el-button>
               <el-button size="small" type="warning" plain :loading="diffLoading" @click="runCurriculumDiff">
                 内置 vs 同步
