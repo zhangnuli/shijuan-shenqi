@@ -290,14 +290,19 @@ pub fn load_config() -> AppConfig {
             cfg.api_key = api_key;
             cfg.api_key_configured = true;
         }
-        _ if !cfg.api_key.trim().is_empty() => {
+        Ok(None) if !cfg.api_key.trim().is_empty() => {
             let _ = save_api_key(&cfg.api_key);
             cfg.api_key_configured = true;
             let mut migrated = cfg.clone();
             migrated.api_key.clear();
             let _ = write_json(&path, &migrated);
         }
-        _ => {
+        Ok(None) => {
+            cfg.api_key.clear();
+            cfg.api_key_configured = false;
+        }
+        Err(error) => {
+            log::warn!("读取 API Key 失败: {error}");
             cfg.api_key.clear();
             cfg.api_key_configured = false;
         }
@@ -313,7 +318,9 @@ pub fn save_config(cfg: &AppConfig) -> Result<(), String> {
         save_api_key(cfg.api_key.trim())?;
         stored.api_key_configured = true;
     } else {
-        stored.api_key_configured = load_api_key()?.is_some();
+        // 保存普通偏好时不重复解密密钥，避免密钥读取异常阻断整个配置保存。
+        // 真正发起请求时仍会由 load_config() 校验密钥是否可用。
+        stored.api_key_configured = cfg.api_key_configured;
     }
     stored.api_key.clear();
     write_json(&path, &stored)

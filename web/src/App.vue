@@ -1787,10 +1787,12 @@ async function saveSettings() {
     config.defaultExamType = form.examType
     config.defaultDifficulty = form.difficulty
     await invoke('set_config', { cfg: { ...config } })
-    if (updatedApiKey) {
-      config.apiKeyConfigured = true
-      config.apiKey = ''
+    const saved = await invoke<AppConfig>('get_config')
+    if (updatedApiKey && !saved.apiKeyConfigured) {
+      throw new Error('API 密钥已提交，但应用重新读取失败，请重新填写并保存。')
     }
+    Object.assign(config, saved)
+    config.apiKey = ''
     ElMessage.success('设置已保存')
     settingsVisible.value = false
   } catch (e) {

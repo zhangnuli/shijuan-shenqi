@@ -33,6 +33,9 @@ export function formatFriendlyError(err: unknown): string {
       `技术信息：\n${message.slice(0, 400)}`
     )
   }
+  if (/解密|加密失败|系统凭据|DPAPI/i.test(message)) {
+    return '本机保存的 API 密钥无法读取，请在「接口设置」中重新填写并保存。'
+  }
   if (/API Key|api key|未填写|请先在设置/i.test(message)) {
     return '尚未配置 API 密钥，请先在「接口设置」中填写。'
   }

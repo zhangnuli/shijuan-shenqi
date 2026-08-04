@@ -18,6 +18,10 @@ describe('formatFriendlyError', () => {
     expect(message).not.toContain('服务器返回了网页')
   })
 
+  it('distinguishes encrypted key storage failures from missing keys', () => {
+    expect(formatFriendlyError('API Key 解密失败: 当前用户无权读取')).toContain('无法读取')
+  })
+
   it('limits unknown error details', () => {
     expect(formatFriendlyError('x'.repeat(600))).toHaveLength(503)
   })
