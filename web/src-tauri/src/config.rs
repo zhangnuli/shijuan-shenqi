@@ -76,8 +76,7 @@ pub struct AppConfig {
 
 /// 规范化用户填写的 OpenAI 兼容 API Base。
 ///
-/// 千帆旧版 Token Plan 配置可能包含 `/v2/tokenplan/personal`，
-/// 当前兼容接口的 Base 是 `/v2`，请求路径由客户端统一追加 `/chat/completions`。
+/// 请求路径由客户端统一追加 `/chat/completions`。
 pub fn normalize_api_base(raw: &str) -> String {
     let mut s = raw.trim().to_string();
     if let Some(i) = s.find('?') {
@@ -94,13 +93,6 @@ pub fn normalize_api_base(raw: &str) -> String {
             s = s[..s.len() - suffix.len()].trim_end_matches('/').to_string();
             break;
         }
-    }
-
-    const QIANFAN_LEGACY_SUFFIX: &str = "/tokenplan/personal";
-    let lower = s.to_lowercase();
-    if lower.contains("qianfan.baidubce.com") && lower.ends_with(QIANFAN_LEGACY_SUFFIX) {
-        s.truncate(s.len() - QIANFAN_LEGACY_SUFFIX.len());
-        s = s.trim_end_matches('/').to_string();
     }
 
     s
@@ -257,6 +249,23 @@ pub fn provider_presets() -> Vec<ProviderPreset> {
                 "ernie-4.5-turbo-20260402".into(),
                 "kimi-k2.6".into(),
                 "glm-5".into(),
+            ],
+            api_style: "openai".into(),
+        },
+        ProviderPreset {
+            id: "qianfan-coding".into(),
+            name: "百度千帆 Coding Plan".into(),
+            base_url: "https://qianfan.baidubce.com/v2/coding".into(),
+            default_model: "qianfan-code-latest".into(),
+            models: vec![
+                "qianfan-code-latest".into(),
+                "kimi-k2.5".into(),
+                "deepseek-v3.2".into(),
+                "glm-5".into(),
+                "minimax-m2.5".into(),
+                "ernie-4.5-turbo-20260402".into(),
+                "deepseek-v4-flash".into(),
+                "glm-5.1".into(),
             ],
             api_style: "openai".into(),
         },

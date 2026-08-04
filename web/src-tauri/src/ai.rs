@@ -75,7 +75,8 @@ fn html_response_hint(api_base: &str, request_url: &str) -> String {
         · https://api.openai.com/v1\n\
         · https://api.deepseek.com/v1\n\
         · https://api.x.ai/v1\n\
-        · 百度千帆：https://qianfan.baidubce.com/v2\n\
+        · 百度千帆普通接口：https://qianfan.baidubce.com/v2\n\
+        · 百度千帆 Coding Plan：https://qianfan.baidubce.com/v2/coding\n\
         · 第三方网关：https://你的域名/v1  （一般以 /v1 结尾）\n\
         \n\
         不要填：\n\
@@ -278,13 +279,13 @@ mod tests {
         );
         assert_eq!(
             normalize_api_base("https://qianfan.baidubce.com/v2/tokenplan/personal"),
-            "https://qianfan.baidubce.com/v2"
+            "https://qianfan.baidubce.com/v2/tokenplan/personal"
         );
         assert_eq!(
             normalize_api_base(
                 "https://qianfan.baidubce.com/v2/tokenplan/personal/chat/completions"
             ),
-            "https://qianfan.baidubce.com/v2"
+            "https://qianfan.baidubce.com/v2/tokenplan/personal"
         );
     }
 }

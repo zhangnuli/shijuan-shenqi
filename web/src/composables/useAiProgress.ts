@@ -42,6 +42,9 @@ export function formatFriendlyError(err: unknown): string {
   if (/timeout|超时|TIMED_OUT|deadline/i.test(message)) {
     return '请求超时。请检查网络后重试，或更换响应更快的模型。'
   }
+  if (/coding[_ -]?plan|non-coding|not allowed for non|coding_plan_api_key/i.test(message)) {
+    return '当前像是百度千帆 Coding Plan 密钥，请在「接口设置」选择“百度千帆 Coding Plan”，接口地址应为 https://qianfan.baidubce.com/v2/coding。'
+  }
   if (/401|Unauthorized|invalid.*key|鉴权|认证/i.test(message)) {
     return '密钥无效或已过期，请核对 API 密钥及账户额度。'
   }

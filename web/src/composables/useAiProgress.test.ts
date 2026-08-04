@@ -22,6 +22,11 @@ describe('formatFriendlyError', () => {
     expect(formatFriendlyError('API Key 解密失败: 当前用户无权读取')).toContain('无法读取')
   })
 
+  it('explains a Coding Plan endpoint mismatch', () => {
+    expect(formatFriendlyError('401 coding_plan_api_key_not_allowed')).toContain('Coding Plan')
+    expect(formatFriendlyError('401 coding_plan_api_key_not_allowed')).toContain('/v2/coding')
+  })
+
   it('limits unknown error details', () => {
     expect(formatFriendlyError('x'.repeat(600))).toHaveLength(503)
   })
