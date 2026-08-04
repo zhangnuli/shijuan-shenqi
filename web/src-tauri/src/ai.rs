@@ -1,4 +1,4 @@
-use crate::config::{normalize_api_base, AppConfig};
+use crate::config::{load_saved_api_key, normalize_api_base, AppConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -90,10 +90,23 @@ fn html_response_hint(api_base: &str, request_url: &str) -> String {
 /// 调用 OpenAI 兼容 Chat Completions
 pub fn chat_completion(cfg: &AppConfig, system: &str, user: &str) -> Result<String, String> {
     check_cancel()?;
-    // 本地 Ollama 等常不需要真实 Key
+    // 本地 Ollama 等常不需要真实 Key；云端请求优先使用配置对象，
+    // 若前端只传回了“已保存”状态，则从本机加密存储兜底读取。
     let base_l0 = cfg.api_base.to_lowercase();
     let local = base_l0.contains("127.0.0.1") || base_l0.contains("localhost");
-    if cfg.api_key.trim().is_empty() && !local {
+    let key = if !cfg.api_key.trim().is_empty() {
+        cfg.api_key.trim().to_string()
+    } else {
+        match load_saved_api_key() {
+            Ok(Some(api_key)) => api_key,
+            Ok(None) => String::new(),
+            Err(error) if !local => {
+                return Err(format!("本机保存的 API Key 无法读取: {error}"));
+            }
+            Err(_) => String::new(),
+        }
+    };
+    if key.is_empty() && !local {
         return Err("请先在设置中填写 API Key".into());
     }
     if cfg.api_base.trim().is_empty() {
@@ -143,7 +156,6 @@ pub fn chat_completion(cfg: &AppConfig, system: &str, user: &str) -> Result<Stri
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
         .json(&body);
-    let key = cfg.api_key.trim();
     if !key.is_empty() {
         req = req.header("Authorization", format!("Bearer {key}"));
     }

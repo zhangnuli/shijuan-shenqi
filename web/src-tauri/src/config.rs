@@ -327,9 +327,11 @@ pub fn save_config(cfg: &AppConfig) -> Result<(), String> {
         save_api_key(cfg.api_key.trim())?;
         stored.api_key_configured = true;
     } else {
-        // 保存普通偏好时不重复解密密钥，避免密钥读取异常阻断整个配置保存。
-        // 真正发起请求时仍会由 load_config() 校验密钥是否可用。
-        stored.api_key_configured = cfg.api_key_configured;
+        // 前端只回传“已配置”标志时，重新校验本机密钥，避免状态标志过期。
+        stored.api_key_configured = match load_api_key() {
+            Ok(Some(api_key)) => !api_key.trim().is_empty(),
+            _ => false,
+        };
     }
     stored.api_key.clear();
     write_json(&path, &stored)
@@ -339,6 +341,11 @@ pub fn load_config_for_frontend() -> AppConfig {
     let mut cfg = load_config();
     cfg.api_key.clear();
     cfg
+}
+
+/// 读取请求时使用的本机密钥，供前端未回传密钥本体时兜底。
+pub fn load_saved_api_key() -> Result<Option<String>, String> {
+    load_api_key().map(|value| value.filter(|api_key| !api_key.trim().is_empty()))
 }
 
 pub fn clear_api_key() -> Result<(), String> {
