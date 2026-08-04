@@ -1,4 +1,4 @@
-use crate::config::AppConfig;
+use crate::config::{normalize_api_base, AppConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -48,32 +48,6 @@ struct ApiErrorBody {
     message: Option<String>,
 }
 
-/// 规范化 API Base：
-/// - 去掉末尾 /
-/// - 若误填了 .../chat/completions 则剥掉
-/// - 若明显是官网首页且无 /v1，给出提示（调用处处理）
-pub fn normalize_api_base(raw: &str) -> String {
-    let mut s = raw.trim().to_string();
-    // 去掉查询串
-    if let Some(i) = s.find('?') {
-        s = s[..i].to_string();
-    }
-    s = s.trim_end_matches('/').to_string();
-
-    // 用户有时会把完整 completions 地址填进 Base
-    for suffix in [
-        "/chat/completions",
-        "/v1/chat/completions",
-        "/completions",
-    ] {
-        if s.to_lowercase().ends_with(suffix) {
-            s = s[..s.len() - suffix.len()].trim_end_matches('/').to_string();
-            break;
-        }
-    }
-    s
-}
-
 fn looks_like_html(text: &str) -> bool {
     let t = text.trim_start().to_lowercase();
     t.starts_with("<!doctype html")
@@ -101,13 +75,14 @@ fn html_response_hint(api_base: &str, request_url: &str) -> String {
         · https://api.openai.com/v1\n\
         · https://api.deepseek.com/v1\n\
         · https://api.x.ai/v1\n\
+        · 百度千帆：https://qianfan.baidubce.com/v2\n\
         · 第三方网关：https://你的域名/v1  （一般以 /v1 结尾）\n\
         \n\
         不要填：\n\
         · https://xxx.com/ （网站首页）\n\
         · 管理后台登录页 / 购买页\n\
         \n\
-        请到「AI 与 API 设置」把 API Base 改成文档里的 Endpoint（含 /v1），并确认 Key、模型名正确。"
+        请到「AI 与 API 设置」把 API Base 改成文档里的 Endpoint（常见为 /v1，百度千帆为 /v2），并确认 Key、模型名正确。"
     )
 }
 
@@ -300,6 +275,16 @@ mod tests {
         assert_eq!(
             normalize_api_base("https://hello.vangularcode.asia/v1/"),
             "https://hello.vangularcode.asia/v1"
+        );
+        assert_eq!(
+            normalize_api_base("https://qianfan.baidubce.com/v2/tokenplan/personal"),
+            "https://qianfan.baidubce.com/v2"
+        );
+        assert_eq!(
+            normalize_api_base(
+                "https://qianfan.baidubce.com/v2/tokenplan/personal/chat/completions"
+            ),
+            "https://qianfan.baidubce.com/v2"
         );
     }
 }

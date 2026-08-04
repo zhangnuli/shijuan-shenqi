@@ -74,6 +74,38 @@ pub struct AppConfig {
     pub default_class_name: String,
 }
 
+/// 规范化用户填写的 OpenAI 兼容 API Base。
+///
+/// 千帆旧版 Token Plan 配置可能包含 `/v2/tokenplan/personal`，
+/// 当前兼容接口的 Base 是 `/v2`，请求路径由客户端统一追加 `/chat/completions`。
+pub fn normalize_api_base(raw: &str) -> String {
+    let mut s = raw.trim().to_string();
+    if let Some(i) = s.find('?') {
+        s = s[..i].to_string();
+    }
+    s = s.trim_end_matches('/').to_string();
+
+    for suffix in [
+        "/chat/completions",
+        "/v1/chat/completions",
+        "/completions",
+    ] {
+        if s.to_lowercase().ends_with(suffix) {
+            s = s[..s.len() - suffix.len()].trim_end_matches('/').to_string();
+            break;
+        }
+    }
+
+    const QIANFAN_LEGACY_SUFFIX: &str = "/tokenplan/personal";
+    let lower = s.to_lowercase();
+    if lower.contains("qianfan.baidubce.com") && lower.ends_with(QIANFAN_LEGACY_SUFFIX) {
+        s.truncate(s.len() - QIANFAN_LEGACY_SUFFIX.len());
+        s = s.trim_end_matches('/').to_string();
+    }
+
+    s
+}
+
 fn default_subject() -> String {
     "math".into()
 }
@@ -214,6 +246,21 @@ pub fn provider_presets() -> Vec<ProviderPreset> {
             api_style: "openai".into(),
         },
         ProviderPreset {
+            id: "qianfan".into(),
+            name: "百度千帆（兼容模式）".into(),
+            base_url: "https://qianfan.baidubce.com/v2".into(),
+            default_model: "deepseek-v3.2".into(),
+            models: vec![
+                "deepseek-v3.2".into(),
+                "deepseek-v4-flash".into(),
+                "deepseek-v4-pro".into(),
+                "ernie-4.5-turbo-20260402".into(),
+                "kimi-k2.6".into(),
+                "glm-5".into(),
+            ],
+            api_style: "openai".into(),
+        },
+        ProviderPreset {
             id: "custom".into(),
             name: "自定义（OpenAI 兼容）".into(),
             base_url: "https://api.example.com/v1".into(),
@@ -237,6 +284,7 @@ pub fn load_config() -> AppConfig {
         return AppConfig::default();
     };
     let mut cfg: AppConfig = read_json(&path).ok().flatten().unwrap_or_default();
+    cfg.api_base = normalize_api_base(&cfg.api_base);
     match load_api_key() {
         Ok(Some(api_key)) => {
             cfg.api_key = api_key;
@@ -260,6 +308,7 @@ pub fn load_config() -> AppConfig {
 pub fn save_config(cfg: &AppConfig) -> Result<(), String> {
     let path = config_path()?;
     let mut stored = cfg.clone();
+    stored.api_base = normalize_api_base(&stored.api_base);
     if !cfg.api_key.trim().is_empty() {
         save_api_key(cfg.api_key.trim())?;
         stored.api_key_configured = true;

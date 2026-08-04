@@ -3776,7 +3776,7 @@ onMounted(loadAll)
             placeholder="https://api.example.com/v1"
           />
           <div class="field-tip">
-            OpenAI 兼容根地址，一般以 <code>/v1</code> 结尾；勿填网站首页。
+            OpenAI 兼容根地址，常见以 <code>/v1</code> 结尾；百度千帆使用 <code>/v2</code>；勿填网站首页。
           </div>
         </el-form-item>
         <el-form-item label="API 密钥">

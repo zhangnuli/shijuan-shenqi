@@ -13,7 +13,7 @@ export const aiTips = [
   '预计 20-90 秒，请保持窗口打开。',
   '试题依据当前教材版本与单元知识点生成。',
   '完成后可在下方预览，并导出 Word。',
-  '若失败，请核对接口地址（通常以 /v1 结尾）与密钥。',
+  '若失败，请核对接口地址（常见为 /v1，百度千帆为 /v2）与密钥。',
   '网络较慢时等待时间会相应增加。',
 ]
 
@@ -24,11 +24,11 @@ export function formatFriendlyError(err: unknown): string {
     .replace(/^AI 组卷失败:\s*/i, '')
     .trim()
 
-  if (/HTML|网页|doctype|API Base|网站首页|\/v1/i.test(message)) {
+  if (/HTML|网页|doctype|text\/html|网站首页|接口地址配置有误/i.test(message)) {
     return (
       '接口地址配置有误，服务器返回了网页而非数据。\n\n' +
       '请在「接口设置」中检查：\n' +
-      '1. 接口地址应为 API 根路径（多为 .../v1），勿填写网站首页；\n' +
+      '1. 接口地址应为 API 根路径（常见 .../v1，百度千帆为 .../v2），勿填写网站首页；\n' +
       '2. 密钥与模型名称是否正确。\n\n' +
       `技术信息：\n${message.slice(0, 400)}`
     )
@@ -45,7 +45,7 @@ export function formatFriendlyError(err: unknown): string {
   if (/404|Not Found/i.test(message)) {
     return '接口地址不存在（404），请核对路径是否完整（常见需包含 /v1）。'
   }
-  if (/network|连接|Failed to fetch|dns|refused/i.test(message)) {
+  if (/network|连接|Failed to fetch|error sending request|sending request|dns|refused/i.test(message)) {
     return '无法连接接口，请检查网络或接口地址是否可访问。'
   }
   return message.length > 500 ? `${message.slice(0, 500)}...` : message
