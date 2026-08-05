@@ -41,6 +41,7 @@ import { renderLessonDocx, buildLessonPrintHtml } from './renderLessonDocx'
 import { saveDocxFile } from './saveFile'
 import { openPdfFile, printHtml, renderHtmlPdf } from './printExam'
 import { buildEbookPrintHtml, type EbookUnitPages } from './buildEbookPrintHtml'
+import { buildAnswerPrintHtml } from './answerPrint'
 import { isCalculationSection, isCompactCalculationItem } from './examLayout'
 import type { BrandHeader } from './brand'
 import { aiSteps, aiTips, formatFriendlyError, useAiProgress } from './composables/useAiProgress'
@@ -2353,6 +2354,7 @@ async function historyPrint(id: string, asAnswers = false) {
 
 /** 生成打印用 HTML（学生卷，不含答案） */
 function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
+  if (withAnswers) return buildAnswerPrintHtml(p, currentBrand())
   const meta = p.meta
   const brand = currentBrand()
   const schoolBlock = [brand.schoolName, [brand.academicYear, brand.schoolTerm].filter(Boolean).join(' ')]
