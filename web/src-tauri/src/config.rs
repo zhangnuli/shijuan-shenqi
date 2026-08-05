@@ -282,6 +282,22 @@ pub fn provider_presets() -> Vec<ProviderPreset> {
             api_style: "openai".into(),
         },
         ProviderPreset {
+            id: "qianfan-tokenplan".into(),
+            name: "百度千帆 Token Plan 个人版（Coding Plan 已迁移）".into(),
+            base_url: "https://qianfan.baidubce.com/v2/tokenplan/personal".into(),
+            default_model: "deepseek-v4-flash".into(),
+            models: vec![
+                "deepseek-v4-pro".into(),
+                "deepseek-v4-flash".into(),
+                "deepseek-v4-flash-0731".into(),
+                "glm-5.2".into(),
+                "glm-5.1".into(),
+                "kimi-k2.6".into(),
+                "ernie-5.1".into(),
+            ],
+            api_style: "openai".into(),
+        },
+        ProviderPreset {
             id: "custom".into(),
             name: "自定义（OpenAI 兼容）".into(),
             base_url: "https://api.example.com/v1".into(),

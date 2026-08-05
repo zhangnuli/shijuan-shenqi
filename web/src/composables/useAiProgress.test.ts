@@ -24,7 +24,13 @@ describe('formatFriendlyError', () => {
 
   it('explains a Coding Plan endpoint mismatch', () => {
     expect(formatFriendlyError('401 coding_plan_api_key_not_allowed')).toContain('Coding Plan')
-    expect(formatFriendlyError('401 coding_plan_api_key_not_allowed')).toContain('/v2/coding')
+    expect(formatFriendlyError('401 coding_plan_api_key_not_allowed')).toContain('Token Plan')
+  })
+
+  it('explains a Token Plan endpoint mismatch', () => {
+    const message = formatFriendlyError('401 token_plan_person_api_key_not_allowed')
+    expect(message).toContain('Token Plan')
+    expect(message).toContain('/v2/tokenplan/personal')
   })
 
   it('does not turn server key errors into missing-key errors', () => {

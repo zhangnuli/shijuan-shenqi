@@ -36,11 +36,14 @@ export function formatFriendlyError(err: unknown): string {
   if (/解密|加密失败|系统凭据|DPAPI/i.test(message)) {
     return '本机保存的 API 密钥无法读取，请在「接口设置」中重新填写并保存。'
   }
+  if (/token[_ -]?plan|token_plan_person|token plan person/i.test(message)) {
+    return '当前密钥属于百度千帆 Token Plan 个人版。请在「接口设置」将服务商切换为“百度千帆 Token Plan 个人版（Coding Plan 已迁移）”，接口地址应为 https://qianfan.baidubce.com/v2/tokenplan/personal，并选择受支持的模型。'
+  }
   if (/coding[_ -]?plan|non-coding|not allowed for non|coding_plan_api_key/i.test(message)) {
-    return '当前是百度千帆 Coding Plan 密钥，但请求未被 Coding Plan 接口接受。请确认接口地址为 https://qianfan.baidubce.com/v2/coding，模型为 qianfan-code-latest，并确认套餐仍在有效期内。'
+    return '当前账号或密钥未被百度千帆 Coding Plan 接口接受。你现有地址对旧版是正确的，但账号可能已迁移到 Token Plan；请在「接口设置」切换为“百度千帆 Token Plan 个人版（Coding Plan 已迁移）”，地址为 https://qianfan.baidubce.com/v2/tokenplan/personal。'
   }
   if (/401|403|Unauthorized|invalid.*key|鉴权|认证/i.test(message)) {
-    return '密钥无效、权限不足或套餐不允许此请求。请核对 API 密钥、接口地址及 Coding Plan 套餐状态。'
+    return '密钥无效、权限不足或套餐不允许此请求。请核对 API 密钥、专用接口地址及千帆套餐状态。'
   }
   if (/AI_CONFIG_MISSING|未配置|未填写|请先在设置/i.test(message)) {
     return '尚未配置 API 密钥，请先在「接口设置」中填写。'
