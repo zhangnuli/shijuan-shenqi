@@ -41,6 +41,7 @@ import { renderLessonDocx, buildLessonPrintHtml } from './renderLessonDocx'
 import { saveDocxFile } from './saveFile'
 import { openPdfFile, printHtml, renderHtmlPdf } from './printExam'
 import { buildEbookPrintHtml, type EbookUnitPages } from './buildEbookPrintHtml'
+import { buildAnswerSheetPrintHtml } from './answerSheetPrint'
 import { isCalculationSection, isCompactCalculationItem } from './examLayout'
 import type { BrandHeader } from './brand'
 import { aiSteps, aiTips, formatFriendlyError, useAiProgress } from './composables/useAiProgress'
@@ -72,7 +73,8 @@ const settingsVisible = ref(false)
 const historyVisible = ref(false)
 const printPreviewVisible = ref(false)
 const printPreviewHtml = ref('')
-const printPreviewIsAnswer = ref(false)
+type PrintMode = 'exam' | 'answers' | 'answerSheet'
+const printPreviewMode = ref<PrintMode>('exam')
 const printPreviewPdfData = ref('')
 const printPreviewPdfPath = ref('')
 const printPreviewLoading = ref(false)
@@ -2258,7 +2260,7 @@ async function outputAction(cmd: string) {
           return
         }
         previewTab.value = 'exam'
-        openPrintPreview(false)
+        openPrintPreview('exam')
         break
       case 'print_answers':
         if (!paper.value) {
@@ -2266,7 +2268,15 @@ async function outputAction(cmd: string) {
           return
         }
         previewTab.value = 'exam'
-        openPrintPreview(true)
+        openPrintPreview('answers')
+        break
+      case 'print_answer_sheet':
+        if (!paper.value) {
+          ElMessage.warning('当前无试卷')
+          return
+        }
+        previewTab.value = 'exam'
+        openPrintPreview('answerSheet')
         break
       case 'print_lesson':
         if (!displayLesson.value && !lessonPlan.value) {
@@ -2275,7 +2285,7 @@ async function outputAction(cmd: string) {
         }
         previewTab.value = 'lesson'
         if (displayLesson.value) lessonPlan.value = displayLesson.value
-        openPrintPreview(false)
+        openPrintPreview('exam')
         break
       default:
         break
@@ -2336,23 +2346,26 @@ async function historyPrint(id: string, asAnswers = false) {
     if (raw?.kind === 'lessonPlanBundle' && (raw as LessonPlanBundle).plans?.length) {
       const plan = (raw as LessonPlanBundle).plans.find((p) => !p.error) || (raw as LessonPlanBundle).plans[0]
       historyVisible.value = false
-      void showPrintPreview(buildLessonPrintHtml(plan, currentBrand()), false)
+      void showPrintPreview(buildLessonPrintHtml(plan, currentBrand()), 'exam')
       return
     }
     if (raw?.kind === 'lessonPlan' || (raw as LessonPlan).process) {
       historyVisible.value = false
-      void showPrintPreview(buildLessonPrintHtml(raw as LessonPlan, currentBrand()), false)
+      void showPrintPreview(buildLessonPrintHtml(raw as LessonPlan, currentBrand()), 'exam')
       return
     }
     historyVisible.value = false
-    void showPrintPreview(buildPrintHtml(raw as ExamPaper, asAnswers), asAnswers)
+    const mode: PrintMode = asAnswers ? 'answers' : 'exam'
+    void showPrintPreview(buildPrintHtml(raw as ExamPaper, mode), mode)
   } catch (e) {
     ElMessage.error(`打印准备失败：${e}`)
   }
 }
 
 /** 生成打印用 HTML（学生卷，不含答案） */
-function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
+function buildPrintHtml(p: ExamPaper, mode: PrintMode): string {
+  if (mode === 'answerSheet') return buildAnswerSheetPrintHtml(p, currentBrand())
+  const withAnswers = mode === 'answers'
   const meta = p.meta
   const brand = currentBrand()
   const schoolBlock = [brand.schoolName, [brand.academicYear, brand.schoolTerm].filter(Boolean).join(' ')]
@@ -2554,10 +2567,16 @@ function buildPrintHtml(p: ExamPaper, withAnswers: boolean): string {
 </html>`
 }
 
-async function showPrintPreview(html: string, withAnswers: boolean) {
+function printModeLabel(mode: PrintMode): string {
+  if (mode === 'answerSheet') return '大字答案'
+  if (mode === 'answers') return '参考答案'
+  return '试卷'
+}
+
+async function showPrintPreview(html: string, mode: PrintMode) {
   const request = ++printPreviewRequest
   printPreviewHtml.value = html
-  printPreviewIsAnswer.value = withAnswers
+  printPreviewMode.value = mode
   printPreviewPdfData.value = ''
   printPreviewPdfPath.value = ''
   printPreviewError.value = ''
@@ -2595,7 +2614,7 @@ function handlePdfPreviewError(message: string) {
   printPreviewPdfPath.value = ''
 }
 
-function openPrintPreview(withAnswers = false) {
+function openPrintPreview(mode: PrintMode = 'exam') {
   const plan = displayLesson.value || lessonPlan.value
   const showLesson =
     plan && (previewTab.value === 'lesson' || (!paper.value && workMode.value === 'lesson'))
@@ -2603,32 +2622,30 @@ function openPrintPreview(withAnswers = false) {
     const isParent = lessonAudienceView.value === 'parent' && !!plan.parentGuide
     void showPrintPreview(buildLessonPrintHtml(plan, currentBrand(), {
       audience: isParent ? 'parent' : 'teacher',
-    }), false)
+    }), 'exam')
     return
   }
   if (!paper.value) {
     ElMessage.warning(workMode.value === 'lesson' ? '请先生成教案或练习卷' : '请先完成组卷')
     return
   }
-  void showPrintPreview(buildPrintHtml(paper.value, withAnswers), withAnswers)
+  void showPrintPreview(buildPrintHtml(paper.value, mode), mode)
 }
 
 async function confirmPrint() {
   try {
     if (printPreviewPdfPath.value) {
       await openPdfFile(printPreviewPdfPath.value)
-      const isAnswer = printPreviewIsAnswer.value
+      const label = printModeLabel(printPreviewMode.value)
       closePrintPreview()
-      ElMessage.success(isAnswer ? '已打开参考答案 PDF，请在 PDF 中打印' : '已打开试卷 PDF，请在 PDF 中打印')
+      ElMessage.success(`已打开${label} PDF，请在 PDF 中打印`)
       return
     }
     const result = await printHtml(printPreviewHtml.value)
     closePrintPreview()
     if (result.mode === 'pdf') {
       ElMessage.success(
-        printPreviewIsAnswer.value
-          ? '已生成参考答案 PDF（无 tauri.localhost 页脚），请在打开的 PDF 中打印'
-          : '已生成试卷 PDF（无 tauri.localhost 页脚），请在打开的 PDF 中打印',
+        `已生成${printModeLabel(printPreviewMode.value)} PDF（无 tauri.localhost 页脚），请在打开的 PDF 中打印`,
       )
     } else {
       ElMessage.warning(
@@ -2710,7 +2727,7 @@ async function fetchEbookUnitAndPreview() {
       maxPages: ebookForm.maxPages || 30,
     })
     ebookUnitPages.value = pages
-    void showPrintPreview(buildEbookPrintHtml(pages), false)
+    void showPrintPreview(buildEbookPrintHtml(pages), 'exam')
     ElMessage.success(
       `已取「${pages.unitName}」第 ${pages.startPage}–${pages.endPage} 页，共 ${pages.pages?.length || 0} 张，可确认打印`,
     )
@@ -2722,7 +2739,7 @@ async function fetchEbookUnitAndPreview() {
 }
 
 async function printExam(withAnswers = false) {
-  openPrintPreview(withAnswers)
+  openPrintPreview(withAnswers ? 'answers' : 'exam')
 }
 
 async function regenerateItem(sectionIndex: number, itemIndex: number) {
@@ -3354,7 +3371,7 @@ onMounted(loadAll)
                 type="success"
                 plain
                 :icon="Printer"
-                @click="openPrintPreview(false)"
+                @click="openPrintPreview('exam')"
               >
                 打印
               </el-button>
@@ -3362,9 +3379,17 @@ onMounted(loadAll)
                 v-if="paper && (previewTab === 'exam' || !displayLesson)"
                 size="small"
                 plain
-                @click="openPrintPreview(true)"
+                @click="openPrintPreview('answers')"
               >
                 打印答案
+              </el-button>
+              <el-button
+                v-if="paper && (previewTab === 'exam' || !displayLesson)"
+                size="small"
+                plain
+                @click="openPrintPreview('answerSheet')"
+              >
+                大字答案
               </el-button>
               <el-button size="small" plain @click="openOutputCenter">产出中心</el-button>
               <el-dropdown
@@ -4209,7 +4234,7 @@ onMounted(loadAll)
     <!-- 打印预览 -->
     <el-dialog
       v-model="printPreviewVisible"
-      :title="printPreviewIsAnswer ? '打印预览 · 参考答案' : '打印预览'"
+      :title="`打印预览 · ${printModeLabel(printPreviewMode)}`"
       width="860px"
       top="4vh"
       class="print-preview-dialog"
@@ -4249,6 +4274,7 @@ onMounted(loadAll)
           <div class="btn-row" style="margin-top: 8px">
             <el-button :disabled="!paper" plain @click="outputAction('print_exam')">打印试卷</el-button>
             <el-button :disabled="!paper" plain @click="outputAction('print_answers')">打印答案</el-button>
+            <el-button :disabled="!paper" plain @click="outputAction('print_answer_sheet')">打印大字答案</el-button>
           </div>
         </div>
         <div class="output-block">
