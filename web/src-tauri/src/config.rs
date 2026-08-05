@@ -1,9 +1,27 @@
+use crate::secret::{clear_api_key as remove_api_key, load_api_key, save_api_key};
+use crate::storage::{read_json, write_json};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use crate::storage::{read_json, write_json};
-use crate::secret::{clear_api_key as remove_api_key, load_api_key, save_api_key};
+use std::sync::{Mutex, OnceLock};
+
+// 保存后立即供本进程内的请求使用，避免 Windows 凭据存储在特殊启动环境下暂时不可读。
+static RUNTIME_API_KEY: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+fn runtime_api_key() -> &'static Mutex<Option<String>> {
+    RUNTIME_API_KEY.get_or_init(|| Mutex::new(None))
+}
+
+fn cached_api_key() -> Option<String> {
+    runtime_api_key().lock().ok().and_then(|key| key.clone())
+}
+
+fn cache_api_key(api_key: Option<String>) {
+    if let Ok(mut cached) = runtime_api_key().lock() {
+        *cached = api_key.filter(|value| !value.trim().is_empty());
+    }
+}
 
 /// 预置厂商（可改 base_url / model，也可完全自定义）
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,13 +102,11 @@ pub fn normalize_api_base(raw: &str) -> String {
     }
     s = s.trim_end_matches('/').to_string();
 
-    for suffix in [
-        "/chat/completions",
-        "/v1/chat/completions",
-        "/completions",
-    ] {
+    for suffix in ["/chat/completions", "/v1/chat/completions", "/completions"] {
         if s.to_lowercase().ends_with(suffix) {
-            s = s[..s.len() - suffix.len()].trim_end_matches('/').to_string();
+            s = s[..s.len() - suffix.len()]
+                .trim_end_matches('/')
+                .to_string();
             break;
         }
     }
@@ -164,11 +180,7 @@ pub fn provider_presets() -> Vec<ProviderPreset> {
             name: "SpaceXAI / xAI".into(),
             base_url: "https://api.x.ai/v1".into(),
             default_model: "grok-4.5".into(),
-            models: vec![
-                "grok-4.5".into(),
-                "grok-3".into(),
-                "grok-3-mini".into(),
-            ],
+            models: vec!["grok-4.5".into(), "grok-3".into(), "grok-3-mini".into()],
             api_style: "openai".into(),
         },
         ProviderPreset {
@@ -296,24 +308,36 @@ pub fn load_config() -> AppConfig {
     cfg.api_base = normalize_api_base(&cfg.api_base);
     match load_api_key() {
         Ok(Some(api_key)) => {
+            cache_api_key(Some(api_key.clone()));
             cfg.api_key = api_key;
             cfg.api_key_configured = true;
         }
         Ok(None) if !cfg.api_key.trim().is_empty() => {
             let _ = save_api_key(&cfg.api_key);
+            cache_api_key(Some(cfg.api_key.clone()));
             cfg.api_key_configured = true;
             let mut migrated = cfg.clone();
             migrated.api_key.clear();
             let _ = write_json(&path, &migrated);
         }
         Ok(None) => {
-            cfg.api_key.clear();
-            cfg.api_key_configured = false;
+            if let Some(api_key) = cached_api_key() {
+                cfg.api_key = api_key;
+                cfg.api_key_configured = true;
+            } else {
+                cfg.api_key.clear();
+                cfg.api_key_configured = false;
+            }
         }
         Err(error) => {
             log::warn!("读取 API Key 失败: {error}");
-            cfg.api_key.clear();
-            cfg.api_key_configured = false;
+            if let Some(api_key) = cached_api_key() {
+                cfg.api_key = api_key;
+                cfg.api_key_configured = true;
+            } else {
+                cfg.api_key.clear();
+                cfg.api_key_configured = false;
+            }
         }
     }
     cfg
@@ -325,12 +349,16 @@ pub fn save_config(cfg: &AppConfig) -> Result<(), String> {
     stored.api_base = normalize_api_base(&stored.api_base);
     if !cfg.api_key.trim().is_empty() {
         save_api_key(cfg.api_key.trim())?;
+        cache_api_key(Some(cfg.api_key.trim().to_string()));
         stored.api_key_configured = true;
     } else {
         // 前端只回传“已配置”标志时，重新校验本机密钥，避免状态标志过期。
         stored.api_key_configured = match load_api_key() {
-            Ok(Some(api_key)) => !api_key.trim().is_empty(),
-            _ => false,
+            Ok(Some(api_key)) if !api_key.trim().is_empty() => {
+                cache_api_key(Some(api_key));
+                true
+            }
+            _ => cached_api_key().is_some(),
         };
     }
     stored.api_key.clear();
@@ -345,11 +373,21 @@ pub fn load_config_for_frontend() -> AppConfig {
 
 /// 读取请求时使用的本机密钥，供前端未回传密钥本体时兜底。
 pub fn load_saved_api_key() -> Result<Option<String>, String> {
-    load_api_key().map(|value| value.filter(|api_key| !api_key.trim().is_empty()))
+    if let Some(api_key) = cached_api_key() {
+        return Ok(Some(api_key));
+    }
+    load_api_key().map(|value| {
+        let value = value.filter(|api_key| !api_key.trim().is_empty());
+        if let Some(api_key) = value.as_ref() {
+            cache_api_key(Some(api_key.clone()));
+        }
+        value
+    })
 }
 
 pub fn clear_api_key() -> Result<(), String> {
     remove_api_key()?;
+    cache_api_key(None);
     let mut cfg = load_config();
     cfg.api_key.clear();
     cfg.api_key_configured = false;

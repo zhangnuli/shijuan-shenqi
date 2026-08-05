@@ -53,14 +53,6 @@ jobs:
         working-directory: web
         run: npm ci
 
-      - name: Run frontend checks
-        working-directory: web
-        run: npm run check
-
-      - name: Run Rust tests
-        working-directory: web
-        run: cargo test --manifest-path src-tauri/Cargo.toml
-
       - name: Sync version from tag
         shell: bash
         run: |

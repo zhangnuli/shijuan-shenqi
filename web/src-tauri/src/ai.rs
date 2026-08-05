@@ -107,7 +107,10 @@ pub fn chat_completion(cfg: &AppConfig, system: &str, user: &str) -> Result<Stri
         }
     };
     if key.is_empty() && !local {
-        return Err("请先在设置中填写 API Key".into());
+        return Err(format!(
+            "AI_CONFIG_MISSING: 运行时未读取到 API Key。provider={}，API Base={}，model={}。请在接口设置中重新保存密钥后重试。",
+            cfg.provider_id, cfg.api_base, cfg.model
+        ));
     }
     if cfg.api_base.trim().is_empty() {
         return Err("请填写 API Base URL".into());
@@ -174,9 +177,7 @@ pub fn chat_completion(cfg: &AppConfig, system: &str, user: &str) -> Result<Stri
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_string();
-    let text = resp
-        .text()
-        .map_err(|e| format!("读取响应失败: {e}"))?;
+    let text = resp.text().map_err(|e| format!("读取响应失败: {e}"))?;
 
     if looks_like_html(&text) || content_type.contains("text/html") {
         return Err(html_response_hint(&base, &url));

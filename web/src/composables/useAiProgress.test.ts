@@ -27,6 +27,16 @@ describe('formatFriendlyError', () => {
     expect(formatFriendlyError('401 coding_plan_api_key_not_allowed')).toContain('/v2/coding')
   })
 
+  it('does not turn server key errors into missing-key errors', () => {
+    const message = formatFriendlyError('API 错误 (401): API key is invalid')
+    expect(message).toContain('密钥无效')
+    expect(message).not.toContain('尚未配置')
+  })
+
+  it('keeps missing runtime keys distinguishable', () => {
+    expect(formatFriendlyError('AI_CONFIG_MISSING: runtime key is empty')).toContain('尚未配置')
+  })
+
   it('limits unknown error details', () => {
     expect(formatFriendlyError('x'.repeat(600))).toHaveLength(503)
   })
