@@ -402,7 +402,8 @@ JSON 结构必须如下：
 11. {mix_hint}
 12. 若用户指定了「重点课时」，命题范围必须优先覆盖这些课时，不得偏离
 13. {count_hint}
-14. 计算题、口算题、竖式题、脱式题必须拆成独立小题：一个 items 元素只能有一道题或一个算式；禁止在同一个 stem 或 answer 中拼接多道算式"#,
+14. 计算题、口算题、竖式题、脱式题必须拆成独立小题：一个 items 元素只能有一道题或一个算式；禁止在同一个 stem 或 answer 中拼接多道算式
+15. 必须输出完整、可解析的 JSON；禁止使用 Markdown、注释、尾逗号、省略号或 `...` 占位符。选择题 options 必须是完整数组，没有选项时使用 []。"#,
         subject_cn = subject_cn,
         edition_cn = edition_cn,
         difficulty = req.difficulty,
@@ -591,9 +592,26 @@ pub fn generate_with_ai(
     let mut user = initial_user.clone();
     for attempt in 0..2 {
         let raw = chat_completion(cfg, &system, &user)?;
-        let json_str = extract_json(&raw)?;
-        let value: Value = serde_json::from_str(&json_str)
-            .map_err(|e| format!("试卷 JSON 无效: {e}\n{json_str}"))?;
+        let json_str = match extract_json(&raw) {
+            Ok(value) => value,
+            Err(error) if attempt == 0 => {
+                user = format!(
+                    "{initial_user}\n\n【上一轮输出无法提取为 JSON】{error}\n请从头完整重生成一份试卷。必须只输出合法 JSON，禁止 Markdown 代码块、注释、尾逗号、省略号或 `...` 占位符；options 没有选项时输出 []。"
+                );
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
+        let value: Value = match serde_json::from_str(&json_str) {
+            Ok(value) => value,
+            Err(error) if attempt == 0 => {
+                user = format!(
+                    "{initial_user}\n\n【上一轮输出不是合法 JSON】{error}\n请从头完整重生成一份试卷。必须只输出合法 JSON，禁止 Markdown 代码块、注释、尾逗号、省略号或 `...` 占位符；options 没有选项时输出 []。"
+                );
+                continue;
+            }
+            Err(error) => return Err(format!("试卷 JSON 无效: {error}\n{json_str}")),
+        };
         // 口算/脱式等可验算题：答案算错时用程序结果自动修正，避免「3/8=0.375」类误杀整卷
         let (value, _math_fixed) = repair_math_answers(&value);
 
