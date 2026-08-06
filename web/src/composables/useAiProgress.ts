@@ -36,8 +36,15 @@ export function formatFriendlyError(err: unknown): string {
   if (/解密|加密失败|系统凭据|DPAPI/i.test(message)) {
     return '本机保存的 API 密钥无法读取，请在「接口设置」中重新填写并保存。'
   }
-  if (/token[_ -]?plan|token_plan_person|token plan person/i.test(message)) {
-    return '当前密钥属于百度千帆 Token Plan 个人版。请在「接口设置」将服务商切换为“百度千帆 Token Plan 个人版（Coding Plan 已迁移）”，接口地址应为 https://qianfan.baidubce.com/v2/tokenplan/personal，并选择受支持的模型。'
+  if (
+    /token[_ -]?plan|token_plan_person|token plan person/i.test(message) &&
+    !/404|not found|network|连接|error sending request|sending request/i.test(message)
+  ) {
+    return (
+      '当前请求信息已经涉及百度千帆 Token Plan 个人版。若「接口设置」中已经是该服务商和 '
+      + 'https://qianfan.baidubce.com/v2/tokenplan/personal，请不要重复切换；请检查模型是否为当前套餐支持的模型，以及密钥权限。\n\n'
+      + `技术信息：\n${message.slice(0, 400)}`
+    )
   }
   if (/coding[_ -]?plan|non-coding|not allowed for non|coding_plan_api_key/i.test(message)) {
     return '当前账号或密钥未被百度千帆 Coding Plan 接口接受。你现有地址对旧版是正确的，但账号可能已迁移到 Token Plan；请在「接口设置」切换为“百度千帆 Token Plan 个人版（Coding Plan 已迁移）”，地址为 https://qianfan.baidubce.com/v2/tokenplan/personal。'

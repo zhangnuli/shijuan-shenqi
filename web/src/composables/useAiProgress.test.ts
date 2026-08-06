@@ -31,6 +31,15 @@ describe('formatFriendlyError', () => {
     const message = formatFriendlyError('401 token_plan_person_api_key_not_allowed')
     expect(message).toContain('Token Plan')
     expect(message).toContain('/v2/tokenplan/personal')
+    expect(message).not.toContain('请在「接口设置」将服务商切换')
+  })
+
+  it('does not turn a Token Plan transport URL into a migration hint', () => {
+    const message = formatFriendlyError(
+      '请求失败: error sending request for url (https://qianfan.baidubce.com/v2/tokenplan/personal/chat/completions)',
+    )
+    expect(message).toContain('无法连接接口')
+    expect(message).not.toContain('请不要重复切换')
   })
 
   it('does not turn server key errors into missing-key errors', () => {
